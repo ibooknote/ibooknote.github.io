@@ -1,0 +1,304 @@
+= 《Linux Observability with BPF》
+
+* 阅读开始时间：20200915
+* 阅读结束时间：
+
+一本关于BPF（Berkeley Packet Filter)的书，借助与Linux内核的通信，观察Linux系统下应用的内部行为。
+
+== 前言
+
+== 序
+
+== 1. 介绍
+
+洞察复杂系统的一般方法：
+
+* 通过分析应用运行所产生的日志信息 -- 但使用这种方式可能会受限，因为所能得到的日志信息仅仅为工程师暴露出来的。
+* 通过指标推理应用的行为 -- 指标数据不同于日志，它是用来衡量一个程序在某一特定时间点的行为
+
+*_Observability_*
+
+从不同的角度处理这一问题的新兴实践。其定义为：向任何给定系统提出任意问题，能够获取到复杂的答案的能力。
+
+可观察性与日志、指标聚合的关键不同点在于搜集的数据：只收集那些对回答问题必不可少的数据。
+
+----
+书中提到了Nassim Nicholas Taleb(纳西姆·尼古拉斯·塔勒布)的两部作品：
+《Antifragile: Things That Gain from Disorder》
+《The Black Swan》，可以找来看看，都是畅销书，还有《Fooled by Randomness》被称为“不确定性三部曲”，研究随机性、不确定性、稀有事件。
+----
+
+软件工程中的黑天鹅事件比我们想象的要普遍，而且是必然发生的。我们所能做的仅仅是尽量获取足够多的信息，来解决它们，避免对业务系统的影响。
+
+Observability 可以帮助我们构建强壮的系统，以减轻未来的黑天鹅事件。因为它的前提是你正在收集的能够回答未来问题的任何数据。
+
+Linux容器是在Linux内核基础上抽象出来的一套功能，用来隔离和管理计算机进程：
+
+* 资源管理
+* 任务隔离
+* 安全
+
+容器的主要功能基于Namespaces和Cgroup，Namespace组件负责任务隔离，Cgroup组件提供资源管理 -- CPU、磁盘I/O、网络..
+
+伴随Linux容器而生的是大型分布式系统和计算平台。
+
+内核是一个事件系统，所有工作都是基于事件来描述和执行：
+
+* 打开文件
+* 执行CPU指令
+* 接收网络包
+
+BPF是内核的一个子系统，可以查看这些新资源信息。BPF允许编写的程序在内核触发事件时执行，并能保证不引入系统崩溃和恶意行为。
+
+=== 1.1. BPF的历史
+
+1992年论文：
+
+_The BSD Packet Filter: A New Architecture for User-Level Packet Capture_
+
+BPF提出的两个过滤包的新方法：
+
+* 一个新的虚拟机，能够与基于寄存器CPU一起高效的工作
+* 应用程序独占buffer，避免过滤时拷贝所有信息
+
+BPF程序不需要重新编译内核，保证了不会导致系统崩溃，并能保证程序不会超范围访问内存 -- 得益于程序有一个最大内存限制。
+
+用户空间与内核之间的通信通过bpf syscall（系统调用）来完成。
+
+BPF maps -- 内核与用户空间交换数据的主要机制。
+
+=== 1.2. 架构
+
+BPF是一个高级的VM，在一个隔离环境下运行代码指令。可以把它比做JVM。当代码编译后，BPF会验证程序是否能够被内核安全运行，防止系统内核崩溃。验证通过后，Linux内核的JIT编译器将BPF二进制码转换成机器码。加载BPF程序时，不需要重新启动系统。
+
+内核运行BPF程序前，需要知道程序挂载的执行点在哪。
+
+=== 1.3. 总结
+
+== 2. 运行第一个 BPF 程序
+
+=== 2.1. 编写BPF程序
+
+=== 2.2. BPF程序类型
+
+==== 2.2.1. Socket Filter Programs
+==== 2.2.2. Kprobe Programs
+==== 2.2.3. Tracepoint Programs
+==== 2.2.4. XDP Programs
+==== 2.2.5. Perf Event Programs
+==== 2.2.6. Cgroup Socket Programs
+==== 2.2.7. Cgroup Open Socket Programs
+==== 2.2.8. Socket Option Programs
+==== 2.2.9. Socket Map Programs
+==== 2.2.10. Cgroup Device Programs
+==== 2.2.11. Socket Message Delivery Programs
+==== 2.2.12. Raw Tracepoint Programs
+==== 2.2.13. Cgroup Socket Address Programs
+==== 2.2.14. Socket Reuseport Programs
+==== 2.2.15. Flow Dissection Programs
+==== 2.2.16. Other BPF Programs
+
+=== 2.3. BPF验证器
+
+=== 2.4. BPF类型 Format
+
+=== 2.5. BPF Tail Calls
+
+=== 2.6. 结论
+
+== 3. BPF Maps
+
+=== 3.1. 创建BPF Maps
+
+==== 3.1.1. 创建BPF Maps的ELF规范
+
+=== 3.2. 使用BPF Maps
+
+==== 3.2.1. 更新BPF Map中的元素
+==== 3.2.2. 读取BPF Map中的元素
+==== 3.2.3. 移除BPF Map中的元素
+==== 3.2.4. 迭代BPF Map中的元素
+==== 3.2.5. 查找、删除Elements
+==== 3.2.6. 并发访问Map元素
+
+=== 3.3. BPF Maps类型
+
+==== 3.3.1. Hash-Table Maps
+==== 3.3.2. Array Maps
+==== 3.3.3. Program Array Maps
+==== 3.3.4. Perf Events Array Maps
+==== 3.3.5. Per-CPU Hash Maps
+==== 3.3.6. Per-CPU Array Maps
+==== 3.3.7. Stack Trace Maps
+==== 3.3.8. Cgroup Array Maps
+==== 3.3.9. LRU Hash and Per-CPU Hash Maps
+==== 3.3.10. LPM Trie Maps
+==== 3.3.11. Array of Maps and Hash of Maps
+==== 3.3.12. Device Map Maps
+==== 3.3.13. CPU Map Maps
+==== 3.3.14. Open Socket Maps
+==== 3.3.15. Socket Array and Hash Maps
+==== 3.3.16. Cgroup Storage and Per-CPU Storage Maps
+==== 3.3.17. Reuseport Socket Maps
+==== 3.3.18. Queue Maps
+==== 3.3.19. Stack Maps
+=== 3.4. BPF虚拟文件系统
+
+=== 3.5. 结尾
+
+== 4. 使用BPF进行追踪
+
+BCC -- BPF Compiler Collection 
+要追踪Linux内核中的程序，第一步是标出能够附加BPF程序的扩展点。这个扩展点通常被成为探针 -- *_probes_*
+
+=== 4.1. 探针（Probes）
+
+Probe字典定义：_An unmanned exploratory spacecraft designed to transmit information about its environment_
+
+_一种无人探索航天器，设计用于传送相关环境的信息_
+
+*Tracing probes* 
+
+_一种探索程序，设计用于传送它们被执行时的环境的相关信息。_
+
+四种不同类型的探针：
+
+* 内核探针 -- 动态访问内核内部组件
+* 追踪点 -- 静态访问内核内部组件
+* 用户空间探针 -- 动态访问用户空间运行的程序
+* 用户静态定义追踪点 -- 静态访问用户空间运行的程序
+
+==== 4.1.1. 内核探针
+
+内核探针允许针对几乎任何内核指令设置动态信号或断点。当内核到达信号时，它将执行探针附带的代码，然后再重启正常的路由。内核探针能提供关于系统发生的任何信息，如系统中打开的文件、正在执行的二进制。
+
+需要注意的是，内核探针没有一个标准的应用二进制接口（ABI），这就意味着不同的内核版本可能不同。同一份代码在不同的内核版本中可能无法正常工作。
+
+内核探针分为两类：
+
+* kprobes
+* kretprobes
+
+他们的使用依赖于插入哪个执行周期。
+
+*Kprobes*
+
+Kprobes允许在任意内核指令执行之前插入BPF程序。需要知道要插入的function signature
+
+*Kretprobes*
+
+Kretprobes是当一个内核指令执行完，返回一个值时插入BPF程序。
+
+==== 4.1.2. 追踪点
+
+==== 4.1.3. 用户空间探针
+
+==== 4.1.4. 用户静态定义追踪点
+
+=== 4.2. 可视化追踪数据
+
+==== 4.2.1. 火焰图 Flame Graphs
+
+==== 4.2.2. Histograms
+
+==== 4.2.3. Perf Events
+
+=== 4.3. 结尾
+
+== 5. BPF工具
+
+=== 5.1. BPFTool
+
+==== 5.1.1. 安装
+
+==== 5.1.2. 功能显示
+
+==== 5.1.3. 检查BPF程序
+==== 5.1.4. 检查BPF Maps
+==== 5.1.5. 检查带特定接口的程序
+==== 5.1.6. 批量模式加载命令
+==== 5.1.7. 显示BTF信息
+
+=== 5.2. BPFTrace
+
+==== 5.2.1. 安装
+
+==== 5.2.2. 语言索引
+
+==== 5.2.3. 过滤
+
+==== 5.2.4. 动态映射
+
+=== 5.3. kubectl-trace
+
+==== 5.3.1. 安装
+
+==== 5.3.2. 检查Kubernetes节点
+
+=== 5.4. eBPF Exporter
+
+==== 5.4.1. 安装
+
+==== 5.4.2. 从BPF到处指标数据
+
+=== 5.5. 总结
+
+== 6. Linux网络和BPF
+
+=== 6.1. BPF和包过滤
+
+==== 6.1.1. tcpdump和BPF表达式
+
+==== 6.1.2. 原始Sockets的包过滤
+
+=== 6.2. 基于BPF的流量控制分类器
+
+==== 6.2.1. 术语
+
+==== 6.2.2. 使用cls_bpf的流量控制分类器程序
+
+==== 6.2.3. 流量控制与XDP的区别
+
+=== 6.3. 结尾
+
+== 7. 快速数据路径
+
+=== 7.1. XDP程序概要
+
+==== 7.1.1. 运行模式
+
+==== 7.1.2. 包处理器
+
+==== 7.1.3. 把XDP和iproute2作为加载器
+
+=== 7.2. XDP和BCC
+
+==== 7.2.1. 使用Python单元测试框架测试XDP
+
+=== 7.3. XDP用例
+
+==== 7.3.1. 监控
+
+==== 7.3.2. 缓解DDoS
+
+==== 7.3.3. 负载均衡
+
+==== 7.3.4. 防火墙
+
+=== 7.4. 总结
+
+== 8. Linux内核安全、功能、Seccomp
+
+=== 8.1. 功能（Capabilities）
+
+=== 8.2. Seccomp
+
+=== 8.3. BPF LSM 钩子
+
+=== 8.4. 总结
+
+== 9. 真实用例
+
+=== 9.1. Sysdig eBPF God Mode
+
+=== 9.2. Flowmill

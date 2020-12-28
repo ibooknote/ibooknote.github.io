@@ -1,0 +1,364 @@
+= 学习笔记
+
+== 1. 《FreeBSD Mastery: ZFS》
+
+20200913
+
+*HAST*
+
+High Availability Storage Technology（高可用存储技术），FreeBSD的分布式存储解决方案
+
+在两台物理上隔离的系统之间以透明的方式，通过TCP/IP网络传输数据的高可用性框架。HAST可以看作通过网络进行的RAID1（镜像），类似于Linux平台上的DRBD存储系统。
+
+Ref：_https://www.freebsd.org/doc/zh_CN/books/handbook/disks-hast.html
+
+同步及复制模式：
+
+* memsync 本地写操作完成，并且远程节点汇报已经收到数据时，便认为数据的写操作已经完成。（目前尚未实现）
+* fullsync 只有本地写操作完成，并且远程的写操作也已经完成的情况下，才认为数据的写操作已经完成。最保险，但最慢
+* async 本地写操作完成时，即认为数据已经写完。最快，但风险最大。（目前尚未实现）
+
+HAST出现脑裂情况时，需要人工干预进行恢复。
+
+*DRBD* 
+
+Distributed Replicated Block Device 基于Linux平台的分布式同步复制存储系统。已实现为内核驱动。
+
+Ref：_https://www.linbit.com/user-guides/_
+
+_DRBD is traditionally used in high availability (HA) computer clusters, but beginning with DRBD version 9, it can also be used to create larger software defined storage pools with a focus on cloud integration._
+
+== 2. The Clean Code Blog博客文章
+
+20200914
+
+Robert C. Martin
+
+=== 2.1. Classes vs. Data Structures
+
+* 对象：一组函数，以及函数操作的数据元素
+* 数据结构：被一些函数操作的一组数据元素
+
+二者互补，类似手和手套。
+
+
+数据库概要设计与业务对象设计：
+
+* 业务对象定了业务行为的结构
+* 数据库概要定义了业务数据的结构
+
+对象和数据结构受不同的约束限制。
+
+类与数据结构的不同：
+
+* 类使函数可见，使数据隐藏；数据结构使数据可见，使函数隐藏
+* 类增加类型容易，增加函数困难；数据结构使得增加函数容易，但增加类型困难
+* 数据结构导致调用者需要重新编译和部署；类将调用者隔离在重新编译和部署之外
+
+ref: _http://blog.cleancoder.com/uncle-bob/2019/06/16/ObjectsAndDataStructures.html_
+
+=== 2.2. Thought Police 思想警察
+
+在一个有活力的、自由的公司、社区和社会中：
+
+* You never punish bad ideas 永远也不要惩罚错误的观点
+* Instead, you counter bad ideas with better ideas 而应该用好的观点去反驳错误的观点
+
+如果一个公司因为表达观点而解雇了一个人，那么这个公司将会死去。因为表达观点变成了不可容忍，那么创造力、想象力、冒险精神，所有这些一个公司、社区和社会必备的东西就受到了压制：
+
+**“如果有权力的人解雇了那些表达错误观点的人，那么除了掌权者以外，没有人会再表达观点。”**
+
+ref: _http://blog.cleancoder.com/uncle-bob/2017/08/09/ThoughtPolice.html_
+
+== 2. 97 Things Every Java Programmer Should Know
+
+=== 2.4. 注意容器环境
+
+老代码应用程序容器化有一定的危险性，因为老版本的JVM在Docker中运行可能做蠢事。
+
+容器已经成为运行时打包机制。他们提供的好处是：
+
+* 一定级别上的隔离
+* 提高了资源的利用率
+* 应用的跨不同环境部署能力
+* 降低了应用与底层平台的耦合度
+
+容器化能够使遗留Java应用和其运行环境在现代的基础实施上运行，但也带来一定的风险。
+
+JVM ergonomics依据两个关键指标对JVM进行优化：CPU数量和可用内存。根据这些指标，JVM决定使用哪个垃圾收集器、如何配置、heap大小、ForkJoinPool大小等。
+
+JDK 8 update 191版本之后增加了对Linux Docker容器的支持，允许JVM基于Linux cgroups去获取分配给容器的资源指标。而旧版本的JVM只能访问主机操作系统的指标，而不是容器的指标。容器运行时一般又只被分配主机资源的一部分，这样JVM就会基于不正确的指标去优化自己。
+
+这就会导致不稳定的状况，容器可能被所在主机杀掉。
+
+所以不推荐在Docker容器上运行老版本的JVM。如果实在要用，至少应该设置不超过分配给容器的资源。
+
+=== 2.14. JVM上的并发
+
+原始的JVM上只有并发模型。运行并行应用程序的需求很低，缺少多核处理器，限制了并发的优点。
+
+*线程和锁*
+
+现在，线程和锁已经太低级：难于使用；理解Java内存模型更难。即使能够正确应用lock功能，它也会影响线程的并行执行，进而降低应用程序的并行程度。
+
+Java不支持分布式内存模型，所以不能跨多个机器进行多线程扩展，测试就更不可能了。
+
+*分布式队列*
+
+突破共享内存限制的最好方法是通过分布式队列来协调线程。消息传递代替了共享内存，也提高了解耦。队列很适合单项沟通，但可能会有延迟。
+
+*Akka*
+
+
+Akka创造了actor模型，由Scala编写的JVM并发实现。
+
+每个actor是个对象，只负责操作自身状态。并发是通过actor之间的消息传递来实现的，所以可以看作是队列的一个更结构化的应用。
+
+Actors可以分级组织，通过监督提供内置的容错和恢复功能。
+
+Actors的确定：
+
+* 无类型消息难与缺少模式匹配的Java配合使用
+* 消息的不可变性无法在当前的Java中强制执行
+* 构造起来不太方便
+* 死锁仍然可能出现
+
+*Clojure*
+
+Clojure采用其内置的软件事务内存，将JVM堆内存转换成事务数据集合。像一个常用的数据库，数据通过乐观事务语义修改。当有冲突发生时，事务会自动重试。这种无锁方式的优点是可以排除显式同步时的很多问题。使用起来也比较容易。
+
+但这种方法在有很多并发写操作的高并行化系统中效率较差。这种情况想，重试增加了消耗，性能也就变得不可预期。
+
+*Java 8 lambdas*
+
+Java 8 lambdas 促进了函数式编程在代码中的应用，actor模型通过阻止共享，减少了可变状态；而函数式编程提供可共享状态是因为它禁止可变性。
+
+由纯的、无副作用的函数组成的并行代码化能够做到很小，但函数式程序的效率可能要比相同功能的命令式要低，并且有可能给垃圾收集器带来更大的负担。
+
+Lambdas也出尽了响应式编程的应用，用于异步处理事件流。
+
+对并发来说没有银弹，但有很多不同的选项可以权衡，应该根据具体问题选择合适的方案。
+
+== 3. 《Domain-Driven Design Quickly》
+
+软件设计方法：
+
+* 瀑布模型
+* 敏捷
+
+瀑布模型的缺点：
+
+* 大量、详细的前期设计
+* 各角色之间没有反馈 -- 系统分析人员没有反馈给业务专家；开发人员没有反馈给系统分析人员
+
+敏捷的缺点：
+
+* 敏捷倡导简洁，但每个人对“简洁”都有自己的理解。
+* 如果没有可靠的设计原则，持续重构将导致代码难于理解和修改
+* 瀑布方法可能导致过度设计，而对过度设计的担心又可能导致另一个担心：害怕做一个深入、彻底的设计
+
+DDD将设计与开发实践相结合，展示了设计与开发可以更好的合作，创造一个更好的解决方案。好的设计可以加快开发，来自开发的反馈又可以改善设计。
+
+瀑布式设计有些过度，敏捷又太忽视设计。
+
+*一种通用语言*
+
+开发者、领域专家分别有自己的语言，领域驱动设计的核心原则是使用一种基于模型的语言。
+
+Ubiquitous Language -- 团队在沟通、代码，所有沟通形式中使用同一种语言，保证其一致性。
+
+== 4. 《Running Lean Iterate from Plan A to a Plan That Works》
+
+=== 4.1. 介绍
+
+==== 4.1.1. 什么是Running Lean？
+
+Running Lean is a systematic process for iterating from Plan A to a plan that works, before running out of resources.
+
+运行精益是一个系统化的过程，用于在资源耗尽之前，从A计划迭代到一个可行的计划。
+
+== 5. 《The Kollected Kode Vicious》
+
+Georage V. Neville-Neil 
+
+一个专栏内容汇总出版的一本书，采用对话形式，描述软件开发方面的各种小故事，开发语言的选型、开发习惯的对比..
+
+*1.3 Coded arrangement*
+
+If you want people to use your library, then you need to find out why they’re reaching around it and try to address their needs. The library isn’t there for you; it is there for them.
+
+如果想让别人使用你的库，你需要找出人家绕过你的库的原因，并解决它们的需求。库不是为你存在，而是为使用者存在。
+
+*1.15 Linguistically Lost*
+
+关于开发语言的选择。
+
+提到了Brian W. Kenighan 和 Rob Pike合著的《The Practice of Programming》是KV必读的书。该书讲述了如何针对不同的应用场景、特定的问题选择合适的开发语言和开发工具。
+
+*2.2 How Much + in C++？*
+
+选择开发语言需要考虑的因素：
+
+* 团队成员里，哪个语言经验最丰富，比例最高？
+* 目标应用是否需要所选开发语言的某个特性？
+* 应用是否使用了其他应用或库提供的服务，而且是使用其他语言编写的，并且难以使用和调试？
+
+在代码和所使用的库中间创建一个夹层的方法会更容易引入bug，所以应该尽量避免（in-laws）。
+
+== 6. 《The Design and Implementation of the FreeBSD Operating System》
+
+Georage V. Neville-Neil 
+
+书中第11章提到了网络文件系统的性能优化方法 -- 采用客户端缓存，但客户端缓存又可能存在数据的延迟更新等问题。
+
+这本书讲述了FreeBSD操作系统的设计原则、针对问题的解决方案等，可以详细阅读。
+
+== 7. 《Dapper, a Large-Scale Distributed Systems Tracing Infrastructure》
+
+Google关于分布式系统追踪基础设施的论文。
+
+== 8. 《An Introduction to the Analysis of Algorithms》
+
+Robert Sedgewick
+
+书中提到的相关阅读书籍：
+
+* The Art of Computer Programming
+* Introduction to Algorithms
+* Analytic Combinatorics
+
+这本书可以作为上述几本书的一个补充阅读。
+
+== 9. 《Learning in Depth》
+
+深入学习的重要性，方法。
+
+知识应该深入学习，不应该只学习表面部分，通过深入学习才能更理解知识的深层内容，同时也会扩展学习到其他很多知识。如果只是学习表层，会导致自以为学会了很多，实则很少。
+
+* 学的越深的人会越觉得自己的无知；
+* 学的越少的人会越觉的自己什么都懂，盲目的自信；
+
+== 10. Gradle生成文档和源代码包
+
+javadoc {
+    options.encoding('UTF-8')
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+== 11. Maven将第三方jar包发布到远程仓库
+
+命令：*mvn deploy:deploy-file*
+
+设置远程仓库连接账号：
+
+```
+<server>   
+<id>central</id>   
+<username>admin</username>   
+<password>admin123</password>   
+</server>
+```
+
+发布命令：
+
+```
+mvn deploy:deploy-file -DgroupId=<group-id> \
+  -DartifactId=<artifact-id> \
+  -Dversion=<version> \
+  -Dpackaging=<type-of-packaging> \
+  -Dfile=<path-to-file> \
+  -DrepositoryId=<id-to-map-on-server-section-of-settings.xml> \
+  -Durl=<url-of-the-repository-to-deploy>
+```
+
+```
+mvn deploy:deploy-file -DgroupId=com.sungness.test \ -DartifactId=target \
+-Dversion=1.0.0 \
+-Dpackaging=jar \
+-Dfile=/path/to/target.jar \
+-Durl=http://ip:port/nexus/content/repositories/releases \
+-DrepositoryId=releases
+```
+
+== 12. CentosOS 7.8安装ruby25、cas博客文档编译
+
+```
+# 1. Install a package with repository for your system:
+# On CentOS, install package centos-release-scl available in CentOS repository:
+$ sudo yum install centos-release-scl
+
+# On RHEL, enable RHSCL repository for you system:
+$ sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
+
+# 2. Install the collection:
+$ sudo yum install rh-ruby25
+
+# 3. Start using software collections:
+$ scl enable rh-ruby25 bash
+```
+
+```
+cd /home/test1/
+git clone https://github.com/apereo/apereo.github.io.git
+cd apereo.github.io/
+gem install bundler:1.16.1
+sudo yum install rh-ruby25-ruby-devel
+bundle install
+
+```
+
+安装王ruby-devel后，用root身份再运行bundle install
+
+构建并启动站点：
+
+bundle exec jekyll serve --host=192.168.142.137 --incremental
+
+指定host为暴露的IP地址。
+
+== 13. Java中异常处理问题
+
+* 所有异常都是Throwable的子类
+  ** Error子类的异常是程序无法预知、无法处理的异常发生时产生，如内存耗尽
+  ** 程序员可报告的异常都是 Exception 的子类
+    *** 未检查（Unchecked）异常都是 RuntimeException 的子类
+    *** 所有其他异常都是 checked 异常
+
+checked异常必须在程序中捕获或者在方法头部声明，编译器在编译时会检查这些异常是否做了相应的处理。
+
+The golden rule of exceptions is, “Throw early, catch late.”
+
+如果捕获到异常又不知道如何处理，只是想记录日志，可以捕捉之后再重新抛出。
+
+== 14. cas文档转换
+
+使用国内镜像下载安装 gitbook
+
+```
+npm install --registry=https://registry.npm.taobao.org gitbook-cli -g
+```
+
+```
+cd docs/cas-server-documentation
+gitbook install
+gitbook serve
+```
+
+== 15. CAS学习
+
+CAS定制化改造原则：
+
+* 避免对软件内部做临时修改（ad-hoc）
+* 避免手动修改核心配置组件（如Spring、Spring Webflow）
+* 避免对deployment做一次性bug修复，应该提交issue
+
+官方建议：
+
+* Bug修改和小的改进应该属于CAS软件核心，而不是使用者的部署，确保上报每一个issue、contribute fixes和补丁。尽量和CAS社区功能解决issue。
+* CAS的内部核心组件很难修改，如果用例的功能的配置和实现确实需要修改软件的内部核心，应该和CAS社区讨论，尝试将其直接构建到CAS软件中。
+
+只在必要时才对部署配置进行修改。
+

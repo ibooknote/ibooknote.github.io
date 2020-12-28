@@ -1,0 +1,20 @@
+= Asciidoctor使用说明
+
+与Markdown类似的文档工具，更适合写作，可将adoc文档转换成html或者PDF，以及其他格式文档。
+
+== 1. 资源
+
+* https://asciidoctor.org[官方网站]
+* https://asciidoctor.org/docs/asciidoctor-pdf[Asciidoctor PDF]
+*
+
+== 2. 安装说明
+
+=== 2.2. asciidoctor-pdf安装
+
+----
+sudo gem install asciidoctor-pdf --pre
+----
+
+== 3. 使用说明
+

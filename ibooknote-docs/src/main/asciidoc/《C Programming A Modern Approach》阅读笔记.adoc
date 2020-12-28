@@ -1,0 +1,35 @@
+= 《C Programming A Modern Approach》阅读笔记
+
+== 1 介绍C
+
+=== 1.2 C的长处和弱点
+
+C语言哲学：
+
+* C是一个低级语言
+* C是一个小巧的语言
+* C是一个宽容的语言
+
+==== 长处
+
+* Efficiency 效率
+* Portability 可移植性
+* Power 强大
+* Flexibility 灵活
+* Standard library 标准库
+* Integration with UNIX 与UNIX集成
+
+==== 弱点
+
+* error-prone 可能容易出错
+* 可能难以理解
+* 可能难以修改
+
+==== 如何更有效的使用C
+
+* 学会如何避免C的陷阱（pitfalls）
+* 使用软件工具使程序变得更强壮
+* 利用已有的代码库
+* 采用明智的编码规范
+* 避免使用花招（“tricks”）和过度复杂的代码
+* 坚持C标准，为了可移植性，避免使用非标准功能和库，除非绝对需要

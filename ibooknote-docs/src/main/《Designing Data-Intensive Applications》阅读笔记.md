@@ -53,7 +53,7 @@ fault is not the same as a failure
 * 一个Linux内核的软件bug导致每个服务器实例同时因错误输入而崩溃
 * 异常进程耗尽了共享资源--CPU时间、内存、硬盘空间或网络带宽
 * 系统依赖的服务响应缓慢或响应错误
-* Cascading failures，小错误触发其他组件中的错误，进而出发更多错误
+* Cascading failures，小错误触发其他组件中的错误，进而触发更多错误
 
 #### 1.1.3、Human Errors
 
@@ -64,7 +64,7 @@ fault is not the same as a failure
 * 用一种使出错的机会最小化的方法设计系统
 * 把最容易出错的地方从他们可能引起failures的地方分离处理
 * 在所有级别进行全面测试，从单元测试到整个系统的集成测试和操作测试
-* 运行快速从认为错误中恢复，如配置回滚、代码回滚，并提供数据重新计算的工具
+* 运行快速从人为错误中恢复，如配置回滚、代码回滚，并提供数据重新计算的工具
 * 构建详细、清晰的监控系统，能够监控性能、出错率等
 * 实现好的管理实践和训练
 
@@ -126,12 +126,12 @@ Hadoop这类的批处理系统的性能指标是：吞吐量--每秒处理的记
 
 复杂的标志：
 
-* explosion of the state space
+* 状态空间爆炸 explosion of the state space
 * 模块紧耦合
 * 混乱的依赖关系
 * 不一致的命名规则和术语
-* hacks aimed at solving performance problems
-* special-casing to work around issues elsewhere
+* 为解决性能问题而采取的特殊手段 hacks aimed at solving performance problems
+* 为解决特定问题而引入的特定框架 special-casing to work around issues elsewhere
 
 复杂系统在修改时更容易引入新的bug
 

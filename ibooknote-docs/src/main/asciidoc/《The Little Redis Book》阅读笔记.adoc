@@ -1,0 +1,194 @@
+= 《The Little Redis Book》阅读笔记
+
+== 1. 基础
+
+本章重点内容
+
+* Key是字符串，用于标识一块数据（value）
+* Value是任意的byte数组，Redis不关心它的内容是什么
+* Redis暴露出5种特定数据结构:
+** Strings
+** Hashes
+** Lists
+** Sets
+** Sorted Sets
+* 以上功能的组合使用使得Redis快速、易用，但不适合所有场景
+
+== 2. 数据结构
+
+5种数据结构
+
+=== 2.1. Strings
+
+Redis中最基本的数据结构。
+
+常用命令：
+
+* strlen 获取value的长度
+* getrange 获取value的特定范围
+* append 将value添加到已存在的value上，如果不存在则创建
+* incr
+* incrby
+* decr
+* decrby
+
+通过key获取value速度很快，所以strings常用来缓存数据。
+
+=== 2.2. Hashes
+
+可以存储多个字段和值，获取数据更精准。
+
+=== 2.3. Lists
+
+可以用于存储和操作给定key的value数组。
+
+添加value、获取第一个或者最后一个，或者通过索引操作value。
+
+lists也可以用于存储日志、用户访问路径跟踪。
+
+=== 2.4. Sets
+
+用于存储唯一的values，并提供基于set的操作，如unions。
+
+Sets是无序的，但提供了高效的基于value的操作。
+
+适合用于用户好友列表：判断谁是否是好友，两个人的共同好友等
+
+=== 2.5. Sorted Sets
+
+有序的set。可以带score功能。
+
+常用于积分排行榜。
+
+== 3. 利用数据结构
+
+=== 3.1. Big O Notation
+
+O(n)、O(1)，在Redis里，用O符号表示处理一定数量的元素时，命令有多快。
+
+* O(1) -- 常量级，最快 sismember 
+* O(log(N)) -- 对数级，较快 zadd, N是集合中元素的个数
+* O(N) -- 线性级，ltrim，N不是列表中元素总个数，而是要移除的元素个数
+
+=== 3.2. Pseudo Multi Key Queries
+
+当多个key指向同一个value时，可以使用hash，使用field作为伪二级索引，引用单一的对象。
+
+这也是hashes真正的亮点。
+
+=== 3.3. 引用和索引
+
+Redis中的引用必须自己处理
+
+=== 3.4. Round Trips and Pipelining
+
+很多命令可以接收多个参数，比如根据多个keys一次获取value
+
+Redis也支持pipelining（管道）。通过使用管道，客户端可以发送多个请求，而不用等待每个的回应，这样可以减少网络开销，显著提高性能。
+
+使用多大的批量操作，要依赖使用的命令。如果命令不超过50个字符，一次批量可执行上千或上万的操作。
+
+=== 3.5. 事务
+
+每个Redis命令都是原子的，包括一次做多件事的。当使用多个命令时，Redis也支持事务。
+
+实际上Redis是单线程的，这才保证了每个命令是原子的。
+
+Redis如何保障事务的执行：
+
+* 多个命令按顺序执行
+* 多个命令作为一个原子操作被执行（其他客户端的命令不会中途插入）
+* 事务中要么所有命令被执行，要不都不执行。
+
+=== 3.6. Time Values
+
+使用sorted sets将时间戳作为score，来对数据按时间排序
+
+=== 3.7. Keys Anti-Pattern
+
+不要在生产环境中使用带有pattern的命令去查找所有匹配的keys，因为这样会对所有keys进行扫描，会很慢。
+
+如果需要用到多个key的解决方案，可以使用hash。
+
+== 4. Beyond The Data Structures
+
+非数据结构特定的命令：info, select, flushdb, multi, exec, discard, watch, keys
+
+=== 4.1. Expiration 时效
+
+可以设置绝对的Unix时间戳，也可以设置存活的秒数
+
+可以使用setex命令，将设置key和时间组合成一个原子命令。
+
+=== 4.2. 发布和订阅
+
+使用list的blpop和brpop可以构建一个简单队列。
+
+可以订阅多个channel，也可以通过模式匹配订阅多个channels。
+
+publish命令返回当前接收消息的客户端数量。
+
+=== 4.3. Monitor and Slow Log
+
+慢日志的信息：
+
+ * 自增id
+ * 命令发生时的Unix时间戳
+ * 命令运行时长，毫秒
+ * 命令和参数
+
+ slow log在内存中维护，所以在生产环境启用也不会有什么问题，默认追踪1024个最新日志。
+
+ === 4.4. Sort
+
+ Redis的一个最强大的命令是 sort。
+
+ 可以对list、set或者sorted set进行排序。
+
+ 当有大量keys要排序时，可以使用hashes和附加字段解决。
+
+ 过大的集合排序会慢，排序的输出结果也可以被排序
+
+ == 5. 管理
+
+ === 5.1. 配置
+
+* redis.conf
+* config set
+* config get
+
+ === 5.2. 认证
+
+可以配置成需要密码验证--requirepass（redis.conf）。
+
+一旦设置密码，客户端通过认证后，就可以执行任何操作，包括flushall，删除每个库的每个key。
+
+可以通过rename重命名命令，可以修改config、flushall等命令的名字，来保证安全。
+
+ === 5.3. 大小限制
+
+* 多少个key？
+* 多少个fields hash？
+* list或set中可以有多少个元素？
+
+hundreds of millions 上亿。
+
+ === 5.4. Replication
+
+可以设置master、slave复制，只读操作可以在slaves上执行，提高性能。可能会有轻微的延迟，但大部分应用是可以满足的。
+
+Redis复制未提供故障转移功能。如果master宕机，需要手动将slave切换为master。可以借助传统的高可用工具实现心跳监测、自动切换。
+
+ === 5.5. 备份
+
+可以将快照保存成dump.rdb文件，可在任何时间点操作。
+
+可以在master服务器上同时禁用快照和append-only功能，而在从服务器上开启，这样可以减轻master的负担。避免影响整个系统的响应。
+
+ === 5.6. 扩展和Redis集群
+
+Redis是单线程的。
+
+同一个机器上可以运行多个实例。
+
+Redis Cluster不但可以提供水平扩展、负载，可以提供高可用的自动故障转移

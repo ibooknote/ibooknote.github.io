@@ -23,7 +23,7 @@ Spring开始时是作为JEE的轻量级替代，虽然在组件编码时是轻�
 
 像其他框架一样，Spring为你做了很多事，但你也需要做很多事作为回报。
 
-项目依赖管理也是很麻烦的事情，需要考虑如何决定使用哪个库，以及哪个版本更合适。版本选择错误可能称为现实生产率的杀手。
+项目依赖管理也是很麻烦的事情，需要考虑如何决定使用哪个库，以及哪个版本更合适。版本选择错误可能成为现实生产率的杀手。
 
 Spring Boot改变了这一切。
 
@@ -213,9 +213,60 @@ cd initializr/
 
 ### 4.1 集成测试自动化配置
 
+@ContextConfiguration 与 @SpringApplicationConfiguration 的区别：二者大部分功能相同，但 @SpringApplicationConfiguration 与使用SpringApplication的方式相同，包括加载外部属性和Spring Boot日志。
+
 ### 4.2 测试Web应用
 
+如果像对待POJOs那样对控制器进行测试，仅仅是测试方法本身，而无法测试该方法对POST请求的处理，也无法测试表单字段到对象参数的绑定，以及调用后重定向的执行。
+
+为了完整的测试Web应用中的HTTP请求，Spring Boot应用开发者可以有两种选择：
+
+* Spring Mock MVC -- 让控制器在一个模拟的servlet容器中接受测试，无需启动应用服务器
+* Web integration tests -- 在嵌入的servlet容器中启动应用程序，在真实的应用服务器上进行测试
+
+模拟环境无需启动web服务器，测试更快；但基于服务器的测试更接近真实的生产环境。
+
+#### 4.2.1 模拟Spring MVC
+
+使用MockMvcBuilders创建Mock MVC的两种方法：
+
+* standaloneSetup() -- 需要手动实例化并注入要测试的控制器
+* webAppContextSetup() -- 工作于WebApplicationContext实例
+
+前者更适合针对某个单一的控制器进行测试，后者Spring会自动加载控制器和他们的依赖，进行全面集成测试。
+
+#### 4.2.2 测试web安全性
+
+Spring Security's test module
+
+Spring Security提供了两个注解用于帮助执行认证请求
+
+* @WithMockUser
+* @WithUserDetails
+
+Mock测试虽然能加快测试控制器功能，但无法测试视图渲染 ，必须用真实servlet容器。
+
 ### 4.3 测试运行中的应用
+
+#### 4.3.1 使用随机端口启动server
+
+> @WebIntegrationTest(value={"server.port=0"})
+
+将server.port属性设置为0，让Spring Boot随机选择一个端口。
+
+或者直接设置randomPort=true：
+
+> @WebIntegrationTest(randomPort=true)
+
+设置了随机端口后，在测试时，可使用属性 local.server.port 获取当前启动的端口：
+
+```
+@Value("${local.server.port}")
+private int port;
+```
+
+#### 4.3.2 使用Selenium测试HTML页面
+
 
 ### 4.4 总结
 
@@ -224,6 +275,11 @@ cd initializr/
 ### 5.1 开发一个Spring Boot CLI应用
 
 ### 5.2 抓住依赖
+
+@Grab应该放在哪里？
+
+并没有规定@Grab必须与类分开放，可以和控制器或者数据持久曾代码放在一起，但为了方便查看所有外部依赖，将其放在一个单独的空类定义中更合适。
+
 
 ### 5.3 使用CLI运行测试
 
@@ -239,15 +295,56 @@ cd initializr/
 ### 6.4 总结
 ## 7. 窥探Actuator
 
+Actuator提供了监控和衡量Spring Boot应用的特性。
+
 ### 7.1 浏览Actuator的端点
+
+Spring Boot Actuator的关键特性是在应用中提供了一些web端点，用于查看运行中的应用程序的内部情况。通过Actuator，可以获取一下内容：
+
+* 在Spring应用环境中捆绑了多少个beans
+* 应用使用了哪些环境变量
+* 获取运行时指标数据快照
+
+端点的种类：
+
+* 配置类端点
+* 指标类端点
+* 杂项
+
 ### 7.2 连接到Actuator远程shell
 ### 7.3 使用JMX监控应用程序
 ### 7.4 自定义Actuator
+
+自定义Actuator的几种方式：
+
+* 重命名endpoints
+* 启用、停用endpoints
+* 定义自定义指标和度量标准
+* 创建自定义仓库，用于存储追踪数据
+* 插入自定义监控指示器
+
 ### 7.5 加强Actuator端点安全
 ### 7.6 总结
 ## 8. 部署Spring Boot应用
 ### 8.1 权衡部署选项
+
+Spring Boot 应用打包部署的几种方式：
+
+* Raw Groovy source
+* 可执行JAR
+* WAR
+
 ### 8.2 部署一个应用服务器
+
+#### 8.2.3 启用数据库迁移（migration）
+
+Spring Boot支持两个流行的数据库迁移库：
+
+* Flyway (http://flywaydb.org)
+* Liquibase (www.liquibase.org)
+
+可以对数据库进行版本控制。
+
 ### 8.3 推送到云端
 ### 8.4 总结
 

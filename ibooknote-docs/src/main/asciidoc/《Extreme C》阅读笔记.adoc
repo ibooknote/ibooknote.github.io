@@ -1,0 +1,204 @@
+= 《Extreme C》阅读笔记
+
+== 13. 并发（Concurrency）
+
+本章要理解的主要内容：
+
+* 并行系统与并发系统的区别
+* 我们什么时候需要并发
+* task scheduler 是什么，广泛应用的调度算法是什么？
+* 并发程序如何运行，他们的内部如何交替（interleavings）？
+* 共享状态是什么，多少种任务可以访问它？
+
+=== 13.1. 介绍并发 concurrency
+
+并发简单来说就是在一个程序中有多个逻辑片段被同时执行。
+
+并发concurrent与并行parallel不同。
+
+concurrency 相关的概念：
+
+* tasks 任务
+* scheduling 调度
+* interleavings 交错、交替
+* state 状态
+* shared state 共享状态
+
+=== 13.2. 并行 Parallelism
+
+并行，简单来说就是有两个任务同时在运行，in parallel。
+
+并发系统中，需要暂停一个任务，以便让另一个任务继续执行。
+
+简单例子：一个人同时读多本书，这叫并发；两个人同时读不同的书这叫并行。
+
+并行是关于可以并行化的任务。这意味着实际的算法可以被拆分，在多个处理单元上运行。但我们直到今天写的大部分算法都是顺序的，而不是并行的。
+
+顺序执行的算法不能简单的被操作系统拆分成多个并行的流程自动的去执行。
+
+=== 13.3. 并发 Concurrency
+
+== 14. 同步 Synchronization
+
+学习内容：
+
+* 并发相关问题、namely、race conditions（竞争条件）、data races（数据竞争）
+* 用于同步访问共享状态的并发控制技术
+* POSIX中的并发
+
+=== 14.1. 并发问题
+
+可修改的共享状态会导致问题，什么样的问题？背后的主要原因？
+
+两大类问题：
+
+* intrinsic concurrency issues - 没有并发控制机制时出现的并发问题
+* post-synchronization issues - 使用并发控制技术之后出现的并发问题
+
+=== 14.2. 固有的并发问题
+
+invariant constraints 不变约束
+
+data integrity 数据完整性：任务在执行自己的指令来修改共享状态之前，必须知道所有可能施行在共享状态上的更新，才能保证它能读到共享状态的最后更新和最新的值。
+
+race condition -- 任务执行要按照特定顺序
+data race -- 可修改的共享状态
+
+=== 14.3. 同步后问题
+
+错误使用控制机制后，可能出现的三种关键问题：
+
+* 新固有问题，控制机制可能导致不同的race conditions或者data races
+* Starvation，任务未能读取到共享资源--starved task
+* Deadlock，死锁--并发系统中的所有任务都在互相等待，没有一个向前推进，这就达到了死锁（circular wait）。死锁情况下，所有任务都被卡住，互相等待。semi-deadlock（半死锁-部分任务被卡住，其他任务能够继续执行）
+* Priority inversion 优先级倒转--在使用同步机制时，优先级高的任务需要使用的共享资源被优先级低的任务阻塞，这就表示他们的优先级被倒转了。（secondary issues）
+
+Starvation（饥饿）在并发系统中默认并不存在，如果不使用同步技术，操作系统的任务调度器会保证公平，不允许任何任务变得starved。只有在程序员使用了某种控制机制之后才可能导致STarvation。同样的，死锁在并发系统中也并不存在，直到程序员引入了它。死锁问题比饥饿问题更常见。
+
+=== 14.4. 同步技术
+
+==== 14.4.1. Busy-waits and spin locks 
+
+忙等待和自旋锁
+
+Busy-waiting并非是高效的解决办法，但是一个简单办法，它会浪费分配的CPU时间片。
+
+使用共享变量表示修改状态的方式并不是锁，而是一个标记（flag）。
+
+lock -- 可以理解为在执行指令前要获得的一个锁。
+
+==== 14.4.2. Sleep/notify机制
+
+也称为wait/notify。
+
+sleep -- 任务休眠状态下，不获取任何CPU时间。当任务将自己置于休眠模式时，任务调度器会知道，不再给它分配任何时间片。避免浪费CPU时间。
+
+notifying/signaling -- 唤醒休眠状态的任务
+
+semaphores -- 信号量
+
+==== 14.4.3. 信号量和互斥 Semaphores and mutexes
+
+binary semaphore -- 二元信号量--mutex
+
+mutex -- mutual exclusion 互斥
+
+互斥的条件：
+
+* 同时只有一个任务可以进入关键部分，其他服务应该等待，直到前一个任务离开关键部分；
+* 解决方法应该无死锁，有些情况下可设置等待上限；
+* 在关键部分中的任务不能为了让其他任务进入而被抢占拉出
+
+waiting time/contention time - 竞争时间
+preemption free - 无抢占
+colaborative - 合作
+
+互斥（mutual exclusion）是并发中最重要的概念。
+
+locking semaphore：等待信号量，并进入关键部分
+unlocking semaphore：离开关键部分，并更新信号量
+
+当一些任务要进入一个关键部分时，他们会尝试锁定信号量，但只有一部分能够获得这个锁并进入关键部分。其他任务将等待获取锁。这个等待获取信号量锁的动作被称为“竞争（contention）”。任务越多，导致竞争越多，竞争时间是衡量任务执行速度下降多少的指标。
+
+一个任务在竞争状态中等待的总时长被称为竞争时间-contention time。应该注意监控并发系统中的竞争时间，避免出现任何的性能降级。
+
+结论：
+
+互斥体是我们同步并行任务的的主要工具。
+
+condition variables在需要一直等待满足一定条件时，也有重要作用。
+
+==== 14.4.4. 多处理器单元
+
+memory coherence protocol -- 内存协调一致性协议
+
+memory visibility -- 内存可见性
+
+memory barriers or memory fences
+内存屏障 或 内存栅栏 -- 当一个本地缓存更新时，主内存和其他缓存都同步更新（同步所有CPU核的本地缓存和主内存）。
+
+当一个任务锁定一个互斥体（或信号量）时，有三种情况会导致互斥体自动解锁：
+
+* 任务使用Unlock命令解锁互斥体
+* 当任务完成时，所欲锁定的互斥体变成解锁状态
+* 当一个任务进入休眠模式时，锁定的互斥体变成解锁状态
+
+=== 14.5. Spin locks 自旋锁
+
+在高性能系统中，将任务放入休眠状态的开销会比较大，常用spin locks来解决这一问题。
+
+==== 14.5.1. 条件变量 Condition variables
+
+condition variables -- 简单变量或对象，可以用于将任务切入休眠模式，或者通知其他休眠中的任务，唤醒他们。条件变量用于在不同任务间传递信号。
+
+mutexes -- locking、unlocking
+condition variables -- sleep、notify
+
+=== 14.6. POSIX中的并发
+
+POSIX类操作系统中提供的两种并发方式：
+
+* multi-processing
+* multithreading
+
+==== 14.6.1. 内核对并发的支持
+
+当前的几乎所有内核都支持多任务，每个内核有一个任务调度单元，用于控制CPU核在多个运行的进程核线程间的共享。
+
+进程（process）：程序运行时，创建一个新的进程，程序逻辑都在进程内运行，进程间互相独立，一个进程不能访问另一个进程的内部（如内存）。
+
+线程（thread）：与进程类似，但它们在一个进程本地的，用于在单个进程内提供并发功能。一个线程不能在两个进程间共享。
+
+不同的内核，任务调度使用不同的策略和算法，但可大致分为两大类：
+
+* Cooperative scheduling 合作调度
+* Preemptive scheduling 抢先调度
+
+合作调度是将CPU核分配给一个任务，并等待任务主动释放CPU核。没有强迫从任务取回CPU核。这种方式的调度，在当前的系统已不多见，除非特定应用，如实时处理。
+
+在抢先调度中，一个任务允许使用CPU核，直到被调度者拿回去。一种特定类型的抢先调度是一个任务允许使用给定的CPU核一定的时间长度，被称为time-sharing，这是当前内核常用的调度策略。（time slice, time slot, quantum)
+
+应用最广泛的时间共享调度算法：Round-robin 轮询调度算法--该算法允许公平的、无饥饿（starvation-free）的访问共享资源。
+
+Round-robin算法的特点：简单
+
+=== 14.7. 多进程 Multi-processing
+
+=== 14.8. 多线程 Multithreading
+
+== 22. 单元测试和调试
+
+C程序单元测试框架
+
+* Check (from the author of the preceding link)
+* AceUnit
+* GNU Autounit
+* cUnit
+* CUnit
+* CppUnit
+* CuTest
+* embUnit
+* MinUnit
+* Google Test -- C++编写，比较流行，https://github.com/google/googletest
+* CMocka -- C编写，比较流行，https://cmocka.org
+

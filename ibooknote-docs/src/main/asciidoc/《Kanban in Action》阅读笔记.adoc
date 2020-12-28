@@ -1,0 +1,15 @@
+= 《Kanban in Action》阅读笔记
+
+== 前言
+
+=== Seeing is half the battle
+
+Seeing is half the battle -- 眼见为成
+
+一个项目使用Kanban时的三个要素：
+
+* 可视化
+* 限制进行中的工作量
+* 管理流程
+
+要想在保证质量的前提下完成工作，工作必须以可持续的速度进行。而要找到并保持这种可持续的速度，进行中的工作（WIP）必须少于能承受的最大工作量。
