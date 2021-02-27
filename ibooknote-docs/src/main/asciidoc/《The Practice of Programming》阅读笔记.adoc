@@ -1,0 +1,74 @@
+= 《The Practice of Programming》阅读笔记
+
+== Preface
+
+计算机科学和编程课程经常会忽略的编程实践：
+
+* testing
+* debugging
+* portability
+* performance
+* design alternatives
+* style
+
+良好软件的基石：
+
+* simplicity 简洁
+* clarity 清晰
+* generality 一般性原则，通用
+* automation 以机器代替人工
+
+== 1. Style 风格
+
+以前的评论认为最好的作家有时会违反修辞规则。当他们这样做时，读者通常会从句子中获得一些额外的补偿。除非他能做的一样好，否则他最好还是遵循这样的规则。
+
+-- William Strunk and E. B. White, The Elements of Style
+
+=== 1.1. Names
+
+变量、函数名称应尽可能提供有用的信息、简洁、容易记忆、容易发音。更多信息来源于上下文环境和它的作用范围；变量的作用范围越广，它的名字传达的信息应该越多。
+
+*全局变量使用描述性名称，局部变量使用短名称*
+
+全局变量定义后，可在程序中任何地方使用，所以它的名字应有足够的描述信息，用于提醒读者它的含义。如果声明时带有一些重要的备注也会很有帮助。
+
+描述性名称应用场景：全局函数、类、结构
+
+相反，短名称对局部变量来说足够了，在一个函数内部：
+
+* n -- 足够
+* npoints -- 可以
+* numberOfPoints -- 过度描述（overkill）
+
+----
+for(theElementlndex=0; theElementlndex < numberOfElements；theElementIndex++)
+    elementArray[theElementlndex] = theElementlndex;
+----
+
+----
+for (i = 0; i < nelems; i++)
+    elem[i] = i;
+----
+
+并不是所有时候都适合使用长的变量名称，清晰通常是通过简洁来实现的。
+
+*始终如一（Be consistent）*
+
+在一个类内部，变量命名规则应该一致，而且不用再重复体现类的含义。
+
+* queue.queueCapacity  -- redundant
+* queue.capacity
+
+*Use active names for functions*
+
+* 函数名称应该基于动词，后面带名词
+* 函数如果返回boolean值，它的名词与返回值不应该有歧义。
+
+----
+if (checkoctal(c)) ...
+if (isoctal(c)) ...
+----
+
+*准确 Be accurate*
+
+名词不仅仅是一个标签，它会传达信息给读者。不准确的名词可能会导致比较难于发现的bugs。

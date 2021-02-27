@@ -1,0 +1,17 @@
+= 《JUnit in Action》阅读笔记
+
+== 2. JUnit核心
+
+概要：
+
+* 理解JUnit生命周期
+* JUnit核心类、方法、注解
+* JUnit机制
+
+=== 2.1 核心注解
+
+* 一个测试类可以是一个包含一个或多个测试方法的顶级类、静态成员类，或者带有@Nested注解的内部类。测试类不是能是抽象类，并且必须只能有一个构造器。构造器不能有参数，或者参数可以动态注入。测试类可以是包可见的，不要求必须是public的。
+* 测试方法是实例方法，带有@Test，@RepeatedTest、@ParameterizedTest、@TestFactory 或者 @TestTemplate等注解
+* 生命周期方法带有 @BeforeAll、@AfterAll、@BeforeEach、@AfterEach注解。
+
+测试方法不能是抽象方法，也不能有返回值（必须是void）。

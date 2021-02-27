@@ -205,6 +205,45 @@ If you want people to use your library, then you need to find out why they’re 
 
 在代码和所使用的库中间创建一个夹层的方法会更容易引入bug，所以应该尽量避免（in-laws）。
 
+*4.3. Protocol Design*
+
+An implementation should be conservative in its sending behavior, and liberal in its receiving behavior.
+-- J.Postel
+(一个实现应该在发送时保守，在接收时宽容。)
+
+*5.5. Review the Design*
+
+A software design review is intended to answer a basic set of questions:
+
+1. How does the design take inputs and turn them into outputs?
+
+2. What are the major components that make up the system?
+
+3. How do the components work together to achieve the goals set out by the design?
+
+*5.18 Books*
+
+__You don’t have to burn books to destroy a culture. Just get people to stop reading them. -- Fahrenheit 451 __
+
+计算机相关的书越来越多，但好书却是相对固定不变的。
+
+Sturgeon's law: __90 percent of everything is crap.__
+
+VK推荐的值得一读的数：
+
+* The Elements of Style by William Strunk -- 计算机书的内容必须通俗移动，不要使用行话，不要使用太长的句子。作者要使读者明白的不是作者有多高明，而是作者要讲述的主题的内涵。
+* The Art of Computer Programming by Donald Knuth -- 当有关于算法的问题或者想优化一些代码时，总是能在这套书中找到答案，不一定要从头到位的读。
+* The Art of Computer Systems Performance Analysis: Techniques for Experimental Design, Measurement, Simulation, and Modeling by Raj Jain
+* Anything written by Richard Stevens including, but not limited to, TCP/IP Illustrated Volume 1 and 2
+** UNIX Network Programming, Volume 1 The Sockets Networking API, 3rd Edition by W. Richard Stevens, Bill Fenner, Andrew M. Rudoff (z-lib.org).pdf
+** UNIX Network Programming Interprocess Communications by W. Richard Stevens (z-lib.org).pdf
+** TCPIP详解 卷3：TCP事务协议、HTTP、NNTP和UNIX域协议 by W.Richard Stevens (z-lib.org).pdf
+* The Practice of Programming by Kernighan and Pike
+* Hacker's Delight by Henry S. Warren Jr
+* Unix and Linux System Administration Handbook by Evi Nemeth
+
+* C. Northcote Parkinson, who wrote a book about management (Parkinson’s Law and Other Studies in Administration, Ballantine Books, 1969). 
+
 == 6. 《The Design and Implementation of the FreeBSD Operating System》
 
 Georage V. Neville-Neil 
@@ -238,7 +277,9 @@ Robert Sedgewick
 * 学的越深的人会越觉得自己的无知；
 * 学的越少的人会越觉的自己什么都懂，盲目的自信；
 
-== 10. Gradle生成文档和源代码包
+== 10. Gradle笔记
+
+=== 10.1. 生成文档和源代码包
 
 javadoc {
     options.encoding('UTF-8')
@@ -248,6 +289,12 @@ java {
     withJavadocJar()
     withSourcesJar()
 }
+
+=== 10.2. Gradle配置多环境yaml占位符自动替换
+
+参考 《Gradle User Manual Version 6.7.1》
+
+Migrating Maven profiles and properties
 
 == 11. Maven将第三方jar包发布到远程仓库
 
@@ -333,32 +380,316 @@ The golden rule of exceptions is, “Throw early, catch late.”
 
 如果捕获到异常又不知道如何处理，只是想记录日志，可以捕捉之后再重新抛出。
 
-== 14. cas文档转换
+=== 13.1. 《Spring 5 design patterns》
 
-使用国内镜像下载安装 gitbook
+----
+RuntimeException, that is, it is an unchecked exception. In an enterprise application, unchecked exceptions can be thrown up the call hierarchy to the best place to handle it. The good thing is that the methods in between don't know about it in the application.
+----
 
-```
-npm install --registry=https://registry.npm.taobao.org gitbook-cli -g
-```
+----
+Roll back if the business method throws a RuntimeException--it is the default behavior of a Spring transaction, but you can override it for checked and custom exceptions also
+----
 
-```
-cd docs/cas-server-documentation
-gitbook install
-gitbook serve
-```
+=== 13.2. 《Thinking in Java Fourth Edition》
 
-== 15. CAS学习
+Standard Java exceptions
 
-CAS定制化改造原则：
+----
+There’s a whole group of exception types that are in this category. They’re always thrown automatically by Java and you don’t need to include them in your exception specifications. Conveniently enough, they’re all grouped together by putting them under a single base class called RuntimeException, which is a perfect example of inheritance: It establishes a family of types that have some characteristics and behaviors in common. Also, you never need to write an exception specification saying that a method might throw a RuntimeException (or any type inherited from RuntimeException), because they are unchecked exceptions. Because they indicate bugs, you don’t usually catch a RuntimeException—it’s dealt with automatically. If you were forced to check for RuntimeExceptions, your code could get too messy. Even though you don’t typically catch RuntimeExceptions, in your own packages you might choose to throw some of the RuntimeExceptions.
+----
 
-* 避免对软件内部做临时修改（ad-hoc）
-* 避免手动修改核心配置组件（如Spring、Spring Webflow）
-* 避免对deployment做一次性bug修复，应该提交issue
+----
+Keep in mind that only exceptions of type RuntimeException (and subclasses) can be ignored in your coding, since the compiler carefully enforces the handling of all checked exceptions. The reasoning is that a RuntimeException represents a programming error, which is:
 
-官方建议：
+1. An error you cannot anticipate. For example,a null reference that is out side of your control.
+2. An error that you, as a programmer, should have checked for in your code (such as ArraylndexOutOfBoundsException where you should have paid attention to the size of the array). An exception that happens from point #1 often becomes an issue for point #2.
 
-* Bug修改和小的改进应该属于CAS软件核心，而不是使用者的部署，确保上报每一个issue、contribute fixes和补丁。尽量和CAS社区功能解决issue。
-* CAS的内部核心组件很难修改，如果用例的功能的配置和实现确实需要修改软件的内部核心，应该和CAS社区讨论，尝试将其直接构建到CAS软件中。
+----
 
-只在必要时才对部署配置进行修改。
+=== 13.3. 《Core Java SE 9》
+
+5 Exceptions, Assertions and Logging
+
+5.1.3
+
+=== 13.4. 《Effective Java 3rd Edition》
+
+Effective Java中文版（原书第3版）
+
+10. Exceptions
+
+*item 69:只在异常条件下使用异常*
+
+不要使用异常代替边界判断，去控制数组的遍历。正常的循环终止测试,性能要比异常的创建、捕捉好很多，并且很多JVM会对其进行优化。
+
+__异常正如他们的名字所描述的，仅仅用于异常条件下；永远不要用于正常的流程控制。__
+
+这条原则也适用于API设计：一个设计良好的API一定不能强制它的客户端使用异常来处理正常流程控制（例如Iterator必须提供hasNext()用于终止迭代判断）
+
+除了hasNext()这种单独的状态测试方法以外，另一种做法是：状态相关的方法被调用时，如果该对象处于不适当的状态中，则返回一个可被识别的值，比如null。但这中方式对于Iterator的应用场景并不合适，因为null是next方法的合法返回值。
+
+“状态测试方法”和“可被识别的返回值”两种方式在使用上的选择原则：
+
+* 如果一个对象在缺少外部同步控制的情况下被并发访问，或者可被外部改变状态，那么使用一个可被识别的返回值可能更有必要，因为在调用“状态测试”方法和调用对应的状态相关方法的时间间隔之间，对象状态可能会发生变化。
+* 如果一个单独的“状态测试”方法必须要重复“状态相关”方法的工作，那么从性能角度考虑，应该使用可被识别的返回值。
+* 如果不存在上述两点问题，那么“状态测试”方法略优于可被识别的返回值，因为它提供了更好的可读性。
+
+
+*item 70: checked异常用于可恢复条件，run-time异常用于程序错误*
+
+Java语言提供的三类异常：
+
+* checked exceptions
+* runtime exceptions
+* errors
+
+决定是使用已检查异常还是未检查异常的一条重要原则：
+
+* 当调用方能够合理的恢复时，使用 checked 异常 -- 通过抛出 checked 异常，可以强迫调用方捕获并处理异常，或者将其传递给上层调用方。方法声明抛出的每一个 checked 异常可以有效的指示 API 使用者，相关状况是执行方法的一种可能输出。
+
+有两种未检查的throwables：runtime异常和错误。它们在行为上是一致的：都是可抛出的，不需要也不应该被捕获。如果一个程序抛出一个未检查异常或者错误，通常表明这种状况是不可恢复的，并且继续执行下去有害无益。如果一个程序不捕获这种异常，它将导致当前线程挂起，并带有合适的错误信息。
+
+使用run-time异常表示程序错误 -- _precondition violations_。
+
+precondition violations -- 是指API客户端没有遵守API规范发布的约定。例如数组越界异常。
+
+如果相信一个条件下允许恢复，使用已检查异常；否则，使用运行时异常。如果不太明确使用哪种，那就尽量选择未检查异常。（原因参见 item 71）
+
+普遍接受的约定： 最好不要实现 Error 的子类；所有未检查 throwables 都应该直接或间接的实现为 RuntimeException 的子类。不但不应该定义 Error的子类，AssertionErro的异常也不应该被抛出。
+
+永远不要自己定义Exception、RuntimeException或者Error以外的其他异常。Java语言规范会把它们当作普通的 checked 异常。
+
+因为 checked 异常通常指示了可恢复条件，对于这样的异常，提供一些辅助方法非常重要，可以帮助调用者在异常条件下获取用于恢复的额外信息。例如，当购买礼品卡时，因余额不足而抛出的 checked 异常。这种异常应该提供一个方法可以查询缺少的金额。这样，调用方可以将金额信息返回给购买者。
+
+总结：
+
+* 可恢复条件下，抛出 checked 异常；
+* 程序错误抛出 unchecked 异常；
+* 当有所怀疑时抛出 unchecked 异常；
+* 不要定义除了 checked 异常和 runtime 异常以外的其他异常；
+* 为 checked 异常提供recovery时用于获取信息的方法。
+
+
+*Item 71: 避免不必要的情况下使用已检查异常*
+
+如果一个方法抛出一个或多个已检查异常，那么调用方必须在一个或多个catch中处理这些异常，或者声明抛出这些异常，向上传递，这会加重程序员的负担。
+
+在Java 8中，当方法抛出 checked 异常时，它不能直接用于 streams 中。
+
+_如果正确使用API无法阻止出现异常情况，并且程序员使用API时如果遭遇异常可以采取一些有用的措施，那么这种负担是合理的。除非这两个条件都成立，否则，未检查异常更合适。_
+
+如果使用API的程序员不能更好的处理，那么未检查异常更合适。
+
+总结：
+
+* 谨慎的使用 checked 异常，可以增加程序的可靠性；
+* 当过度使用 checked 异常时，会让API的使用变的很痛苦；
+* 如果调用方不能从失败中恢复，那么抛出 unchecked 异常；
+* 如果恢复可能可行，并且希望强制调用方处理异常情况，可以优先考虑返回一个 optional
+* 仅当在失败情况下提供的信息不足时，才应该抛出已检查异常（？？？）
+
+*Item 72: 尽量使用标准异常*
+
+重用标准异常的几点好处：
+
+* API 更容易学习和使用（标准异常大家都熟悉）
+* 使用这种API的程序可读性更好
+* 更少的异常类，意味着更小的内存空间需求和类加载时间
+
+常用的异常：
+
+* IllegalArgumentException 传入参数不合法
+* IllegalStateException 要调用的对象状态不合法，如未初始化
+* NullPointerException
+* IndexOutOfBoundsException
+* ConcurrentModificationException
+* UnsupportedOperationException
+
+不要直接使用 Exception, RuntimeException, Throwable, Error。把这些类当作抽象类对待。因为它们是其他异常类的超类，所以当方法抛出时，不能更可靠的测试这些异常（可能不是你预期的地方抛出的，而是其他位置抛出的异常子类，而被你给当成超类对象捕捉到了）
+
+*Item 73: 抛出适合于抽象的异常*
+
+exception translation -- _上层应该捕获底层的异常，在它们的位置再抛出可以用上层抽象解释的异常。_
+
+exception chaining -- 当底层异常有助于调试问题时，底层异常当作cause传递给上层异常，上层异常提供getCause方法可以重新获取底层异常。
+
+尽管异常转换比无意识的从底层传递异常更好，但也不要过度使用。
+
+
+*Throw early, catch late*
+----
+TIP: Some programmers think it is shameful to admit that a method might throw an exception. Wouldn’t it be better to handle it instead? Actually, the opposite is true. You should allow each exception to find its way to a competent handler. The golden rule of exceptions is, “Throw early, catch late.”
+----
+
+=== 13.5. Core Java Volume I -- Fundamentals
+
+Chapter 7 Exception
+
+7.3 异常使用提示
+
+1. 不能使用异常处理来代替正常的单个测试 -- if (!s.empty()) s.pop();
+2. 不要将每条语句可能产生的异常单独管理（每条语句用一个try 、catch）
+3. 合理利用合适的异常级别 -- 不要直接抛出 RuntimeException，而是选择一个合适的子类或创建自己的
+4. 不要压制（隐藏）异常
+
+== 14. Swagger框架
+
+springfox + Knife4j
+
+在Knife4j 3.0版中，后端Java代码和ui包分离为多个模块的jar包,以面对在目前微服务架构下,更加方便的使用增强文档注解(使用SpringCloud微服务项目,只需要在网关层集成UI的jar包即可,因此分离前后端)
+
+https://xiaoym.gitee.io/knife4j/documentation/description.html
+
+== 15. 《Functional Programming in Java》
+
+=== 前言
+
+从语言角度来说，Java只是支持函数式编程，但它不是为函数式编程而生。最适合函数式编程的语言是 Haskell、Scala。但从公司或项目角度来说，如果无法决定在项目中使用哪种语言，必须接受Java的话，那就有必要学习Java中的函数式编程方法和思维。
+
+=== 关于本书
+
+* imperative paradigm 命令式范式
+* functional paradigm 函数式范式
+
+没有所谓的函数式语言，只有哪种语言对函数式编程更友好。
+
+== 16. 单元测试
+
+单元测试的学习清单：
+
+* JUnit in Action, Third Edition
+* Testing Java Microservices
+* Working Effectively with Unit Tests
+* xUnit Test Patterns
+* Test Driven Development By Example by Beck, Kent
+
+《Testing Java Microservices》书中 3.1 中提到 _sociable unit test_ 和 _solitary unit test_ 概念来源于《Working Effectively with Unit Tests》 一书；
+
+3.1.2 中提到的 test double 概念来源于 《xUnit Test Patterns: Refactoring Test Code》一书。
+
+=== 16.1. 引申阅读
+
+《Test Driven Development》作者Kent Beck的另一本书《Implementation Patterns》讲述如何通过代码沟通：
+
+* 第一，编程时保持意识清醒
+* 第二，承认其他人的重要性
+* 第三，在实践中示范实现模式
+
+其书中又提到内容介于 Design Patterns 和 Java语言之间。并且本书的实现模式中为解决并发问题。推荐阅读《Java Concurrency in Practice》一书。
+
+《Java Concurrency in Practice》主要讲述一套设计规则和思维模型，用于并发应用程序的开发，关注的是高级层面（设计层面）的策略和模式。（很多其他并发方面的书关注的是底层机制）
+
+=== 16.2. TDD 的三个简单步骤
+
+* 为下一步要添加的功能编写一个测试程序
+* 实现功能代码，直到测试通过
+* 重构新老代码，使得达到良好的结构
+
+循环使用这三个步骤。这样做的好处：
+
+* 写出的代码总是自测试的
+* 先思考测试，强迫你先思考代码的接口
+
+在具体实践过程中，第三部经常被忽略。重构代码，保证其整洁性，是这个过程中关键的一部分，否则代码会变得很凌乱。
+
+=== 16.3. C/C++单元测试
+
+* Google C++ Testing Framework（https://github.com/google/googletest）
+
+open regression frameworks：
+
+* Boost unit test framework
+* CppUnit.
+
+相关文章：
+
+* https://developer.ibm.com/technologies/systems/articles/au-googletestingframework
+* https://www.ibm.com/developerworks/aix/library/au-ctools2_cppunit/index.html
+* au-ctools2_cppunit-pdf.pdf
+* http://cppunit.sourceforge.net/doc/cvs/cppunit_cookbook.html
+* https://netbeans.org/kb/docs/cnd/c-unit-test.html
+* http://sourceforge.net/projects/cunit/
+
+测试框架：
+
+* packages/cppunit-cvs-repo-archive.tar.bz2
+* packages/CUnit-2.1-3.tar.bz2
+
+
+《Unit Test Frameworks》
+
+== 17. Kubernetes CSI 容器存储开发
+
+相关资源：
+
+* https://kubernetes-csi.github.io/docs/ （Kubernetes CSI Developer Documentation.pdf）
+* https://github.com/kubernetes/community/blob/master/sig-storage/volume-plugin-faq.md
+* /Users/wanghongwei/SRepository/github-res/open-source/kubernetes/kubernetes-csi （kubernetes-csi.github.io本地仓库）
+
+实现自定义k8s存储卷的三种方式：
+
+* In-tree 存储卷插件（不推荐使用，in-tree模式已经关闭）
+* Out-of-tree FlexVolume 驱动 （不推荐，新版k8s已不再改进）
+* Out-of-tree CSI 驱动 （推荐的标准方式）
+
+
+== 18. Gson 和 springfox 冲突问题的解决
+
+Spring Boot引入Gson自动化配置，导致springfox的API接口返回的json数据外面多包了一层 value，解决方案如下：
+
+https://stackoverflow.com/questions/30219946/springfoxswagger2-does-not-work-with-gsonhttpmessageconverterconfig/30220562#30220562
+
+springfox官方文档：
+
+Caveat to using the library is that it depends on Jackson for serialization, more importantly the `ObjectMapper`. A
+good example of where this breaks down is the following http://stackoverflow.com/a/30220562/19219[issue when using Gson serialization]
+
+== 19. 《Inffrastructure as Code》
+
+Organizations can’t choose between being good at change or being good at stability. They tend to either be good at both or bad at both.
+
+Normalization of Deviance：
+
+《The Challenger Launch Decision》 作者: Diane Vaughan 
+出版社: University Of Chicago Press
+
+《The Visible Ops Handbook》 (IT Process Insti‐ tute)
+TDD/CI/CD
+
+== 20. Microservices: Up and Running
+
+微服务下的分布式事务解决方案，传统的ACID已不再适用，而采用Sagas更合适：
+
+“With sagas, every step of a transaction not only performs the required action for that step, but it also defines a compensating action that should execute if we need to roll back the transaction due to a later failure. A pointer (e.g., discovery information on a queue) to this compensating action is registered on a routing slip and passed along to the next step. If one of the later steps fails, it kicks off execution of all compensating actions on the routing slip, thus “undoing” the modifications and bringing the system to a reasonably compensated state.”
+
+Excerpt From: Ronnie Mitra. “Microservices: Up and Running.” Apple Books. 
+
+应用Sagas，事务的每一步不仅仅执行需要的操作，它还定义一个补偿操作，当在后来的失败中需要回滚事务时执行。补偿操作被注册到一个路由表上，被传递到下一步。如果之后的某一步失败了，它就开始执行路由表上的每一个补偿操作。因此“撤销”修改，并将系统置于一个合理的补偿状态。
+
+*Sagas与ACID事务并非直接等效*
+
+当分布式事务回滚时，Sagas不承诺系统将恢复到初始状态。而是在部分完成的事务撤销之后，达到一个可接受的合理状态。
+
+reasonable state
+
+举例：
+
+当用户预定座位，支付完成后，如果预定失败，则支付服务将收到退款补偿请求，为用户退款；由于支付类型的不同，退款可能不是立即处理，所以系统不能立即恢复到初始状态，但最终，客户会拿回他们的钱。也就是说，客户会看到付款和退款两条记录。（传统的ACID事务，用户看不到回滚记录）
+
+*Saga中事件的顺序是有意义的*
+
+Saga中的事件顺序很重要，应该认真构思。通常，将补偿比较麻烦的步骤放在事务的结尾比较合适。例如，如果业务规则允许，将“通知”放在处理过程的最后，可能使我们不必发送大量的更正消息。这样，当事务开始发送警告时，我们将知道前面的步骤已经成功了。
+
+== 21. CKAD Kubernetes应用开发认证
+
+CKAD -- Certified Kubernetes Application Developer
+
+《Certified Kubernetes Application Developer Study Guide》
+
+学习这本书之前，最好先阅读两本基础入门书：
+
+* 《Kubernetes Up & Running》
+* 《Kubernetes in Action》
+
+CKA -- Kubernetes管理员认证
 

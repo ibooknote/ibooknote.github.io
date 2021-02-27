@@ -1,0 +1,54 @@
+= 《Programming Rust》阅读笔记
+
+== 前言
+
+Rust是一个系统编程语言
+
+系统编程的范围：
+
+* 操作系统
+* 各种设备驱动
+* 文件系统
+* 数据库
+* 廉价设备或高可用设备上运行的代码
+* 加密
+* 多媒体编码
+* 多媒体处理
+* 内存管理（垃圾回收）
+* 文本渲染
+* 实现高级编程语言（JS/Python）
+* 网络
+* 虚拟化和软件容器
+* 科学仿真
+* 游戏
+
+简而言之，系统编程就是资源受限编程（resource-constrained）
+
+== Chapter 1. 为什么有Rust？
+
+Rust能像C和C++一样，能够更好的控制内存，管理语言与机器之间的紧密操作。
+
+Rust追求的目标与C++相同。
+
+Bjarne Stroustrup在论文 __《Abstraction and the C++ Machine Model》__ 中提出：
+
+```
+In general, C++ implementations obey the zero-overhead principle: What you don’t use, you don’t pay for. And further: What you do use, you couldn’t hand code any better.
+
+通常，C++实现遵循零开销原则：您不用的东西，不用花钱。 更进一步：您使用的是什么，您无法再编写更好的代码了。
+```
+
+在此基础上，Rust增加了自己的目标：
+
+* 内存安全
+* 可靠的并发
+
+实现这个目标的关键是Rust中的新特性：
+
+* ownership -- 每一个值都有一个明确的生命周期，核心语言中无需再使用垃圾收集
+* moves -- moves将值从一个owner传递到另一个owner
+* borrows -- borrowing可以让代码临时使用一个值，而不会影响它的ownership
+
+* Rust虽然有面向对象特性，但不是一个真正的面向对象语言；
+* Rust尽管像函数式语言那样可以明确作用于计算结果，但它不是一个函数式语言；
+* Rust更接近与C和C++，但它们的很多风格又不适用

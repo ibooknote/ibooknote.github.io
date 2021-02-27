@@ -1,0 +1,396 @@
+= CAS学习笔记
+
+== 1. CAS介绍
+
+CAS -- Central Authentication Service
+
+核心组件：
+
+* CAS Server -- CAS服务器端，为CAS客户提供认证、授权，分发TGT、ST凭证
+* Service Management -- CAS服务管理，管理CAS的服务注册信息，与CAS服务器分开单独部署，但共享同一个服务注册信息存储
+* CAS Client -- CAS客户端（web/app），需要使用CAS服务器做为单点登录验证和授权的客户端应用
+
+=== 1.1. 部署方式
+
+*CAS Server*
+
+通过 cas-overlay 方式部署，无需修改cas-overlay 代码，只修改相关配置即可，项目地址：
+
+https://github.com/apereo/cas-overlay-template 
+
+配置测试域名：cas.example.org
+
+*配置SSL*
+
+----
+keytool -genkey -alias cas -keyalg RSA -validity 999 \
+    -keystore /etc/cas/thekeystore -ext san=dns:cas.example.org
+Enter keystore password: changeit
+Re-enter new password: changeit
+What is your first and last name?
+  [Unknown]:  cas.example.org
+What is the name of your organizational unit?
+  [Unknown]:  test
+What is the name of your organization?
+  [Unknown]:  test
+What is the name of your City or Locality?
+  [Unknown]:  test
+What is the name of your State or Province?
+  [Unknown]:  test
+What is the two-letter country code for this unit?
+  [Unknown]:  CN
+Is CN=cas.example.org, OU=test, O=test, L=test, ST=test, C=CN correct?
+  [no]:  yes
+
+----
+
+修改/etc/hosts:
+
+----
+127.0.0.1	cas.example.org
+----
+
+导出证书，并导入到Java虚拟机目录：
+----
+# Export the certificate into a file
+sudo keytool -export -file /etc/cas/config/cas.crt -keystore /etc/cas/thekeystore -alias cas
+
+# Import the certificate into the global keystore
+sudo keytool -import -file /etc/cas/config/cas.crt -alias cas -keystore $JAVA_HOME/lib/security/cacerts
+----
+
+
+*Service Management*
+
+通过 cas-management-overlay 方式部署，项目地址：
+
+https://github.com/apereo/cas-management-overlay
+
+*CAS Client*
+
+通过在项目中引入 cas-client 依赖，项目地址：
+
+https://github.com/apereo/java-cas-client
+
+Gradle依赖：
+
+----
+implementation 'org.jasig.cas.client:cas-client-support-springboot:3.6.0'
+----
+
+== 2. CAS-overlay CAS服务器
+
+CAS定制化改造原则：
+
+* 避免对软件内部做临时修改（ad-hoc）
+* 避免手动修改核心配置组件（如Spring、Spring Webflow）
+* 避免对deployment做一次性bug修复，应该提交issue
+
+官方建议：
+
+* Bug修改和小的改进应该属于CAS软件核心，而不是使用者的部署，确保上报每一个issue、contribute fixes和补丁。尽量和CAS社区功能解决issue。
+* CAS的内部核心组件很难修改，如果用例的功能的配置和实现确实需要修改软件的内部核心，应该和CAS社区讨论，尝试将其直接构建到CAS软件中。
+
+只在必要时才对部署配置进行修改。
+
+cas-overlay 项目启动后可通过以下地址访问：
+
+https://cas.example.org:8443/cas/login
+
+设置登录用户名、密码（/etc/cas/config/cas.properties）：
+
+> cas.authn.accept.users=sungness::sungness
+
+默认登录用户名密码： casuser / Mellon，设置上面的账号密码之后，默认账号密码即失效。
+
+正式部署时必须将其关闭
+
+启动客户端应用后，访问客户端页面报错：
+
+----
+Application Not Authorized to Use CAS
+
+The application you attempted to authenticate to is not authorized to use CAS. This usually indicates that the application is not registered with CAS, or its authorization policy defined in its registration record prevents it from leveraging CAS functionality, or it's malformed and unrecognized by CAS. Contact your CAS administrator to learn how you might register and integrate your application with CAS.
+----
+
+解决办法
+
+----
+I solved issue myself, The issue was with the serviceId not mapped correctly in the client table of the CAS database.
+
+It took two weeks to understand the complete CAS system and resolve the issue. But Someone having the same issue can directly follow the below steps (Assuming CAS 5.1 version deployed on tomcat +linux)
+
+Check your .json files placed under /etc/cas/services
+Check your .jwks files places under /etc/cas/jwks folder
+Check the clientId and ClientSecret matches in .json , .jwks and in CAS Database- Client table
+Check the serviceID mapped in .json,.jwks and in your CAS Database,client table
+All the best.
+----
+
+=== 2.1. CAS Properties
+
+https://apereo.github.io/cas/6.2.x/configuration/Configuration-Properties.html
+
+不要把所有配置都加加到CAS配置中，只需要挑选需要的。属性名称可以多种形式配置：
+
+* cas.someProperty
+* cas.some-property
+* cas.some_property
+
+==== 2.1.1. 普通配置属性
+
+https://apereo.github.io/cas/6.2.x/configuration/Configuration-Properties-Common.html
+
+==== 2.1.2. 属性验证
+
+CAS启动时自动验证。
+
+==== 2.1.3. 自定义设置
+
+----
+cas.custom.properties.[property-name]=[property-value]
+----
+
+==== 2.1.4. 配置存储
+
+*单机模式*
+
+单机模式时，只有一个server实例，可以通过目录或文件定位配置：
+
+* 指定目录 -- cas.standalone.configurationDirectory 如果不指定，默认查找 /etc/cas/config;/opt/cas/config;/var/cas/config
+* 指定文件 -- cas.standalone.configurationFile
+
+*Spring Cloud*
+
+使用src/main/resources/bootstrap.properties中配置的服务器查找配置
+
+参考：
+https://apereo.github.io/cas/6.2.x/configuration/Configuration-Server-Management.html
+
+Spring Cloud支持的配置服务器包括：
+
+* Native
+----
+# spring.profiles.active=native
+
+# The configuration directory where CAS should monitor to locate settings.
+# spring.cloud.config.server.native.search-locations=file:///etc/cas/config
+----
+
+* Git仓库
+* MongoDB
+* Amazon S3
+* JDBC
+* REST
+
+----
+# cas.spring.cloud.rest.url=
+# cas.spring.cloud.rest.basic-auth-username=
+# cas.spring.cloud.rest.basic-auth-password=
+# cas.spring.cloud.rest.method=
+# cas.spring.cloud.rest.headers=Header1:Value1;Header2:Value2
+----
+
+==== 2.1.5. 配置安全
+
+敏感信息加密：
+https://apereo.github.io/cas/6.2.x/configuration/Configuration-Properties-Security.html
+
+==== 2.1.6. 监控检查
+
+* 内存
+* 系统（CPU、负载、堆）
+* session健康检查，tickets、SSO session使用情况
+* JDBC数据库连接
+* LDAP 连接池
+* MongoDB连接
+
+== 3. Service Management 
+
+https://apereo.github.io/cas/6.3.x/services/Service-Management.html
+
+CAS服务管理功能允许CAS服务器管理员声明和配置哪些服务（CAS客户端）可以使用CAS。服务管理的核心组件是：service registry 服务注册，用于存储一个或多个已注册的服务，包括它们的元数据，可以完成以下一些行为：
+
+* Authorized services - 控制哪些服务可以参与到CAS SSO session
+* Forced authentication - 提供管理验证，强制验证
+* Attribute release - 属性发布，为服务提供用户的详细信息，用于授权和个性化
+* Proxy control - 
+* Theme control - 为特定服务定义代替的CAS样式
+
+service-registry相关的配置属性：
+
+* cas.service-registry.*
+
+属性相关连接：
+
+https://apereo.github.io/cas/6.3.x/configuration/Configuration-Properties.html#service-registry
+
+=== 3.1. 管理端点
+
+* registeredServices -- 查询或删除注册的服务，GET、DELETE
+* exportRegisterdServices -- 导出ZIP格式的已注册服务
+* importRegisterdServices -- 导入服务定义
+
+=== 3.2. 服务管理Web应用
+
+服务管理webapp是一个独立的web应用，可以作为CAS的辅助单独部署，提供了一个GUI界面用于管理服务注册数据。管理web应用必须与CAS server共享同一份注册配置，以便整个系统能够加载相同的服务数据。
+
+管理webapp安装说明：
+
+https://apereo.github.io/cas/6.3.x/services/Installing-ServicesMgmt-Webapp.html
+
+Overlay Installation
+
+https://github.com/apereo/cas-management-overlay
+
+
+=== 3.3. 注册服务（Registered Services）
+
+注册服务信息包括以下元数据：
+
+* id -- 必须，唯一标识即，必须是数值型
+* name -- 必须，服务名称，不超过255个字符
+* description -- 可选，关于服务的描述信息，255个字符以下
+* informationUrl -- 可选，指向服务信息指南的URL地址
+* privacyUrl -- 可选，指向服务隐私政策的URL地址
+* redirectUrl -- 可选，认证通过后跳转回的应用URL地址
+* logo -- 指向服务的Logo图片地址，图片将与服务描述和名称一起显示在登录页面。可以是指向CAS web应用images目录的相对路径，也可以是完整路径
+* serviceId -- 必须，描述一个logical service的正则表达式。一个逻辑服务定义一个或多个用于定位服务的URLs。URl模式定义必须加倍小心，因为它可能导致安全漏洞
+* theme -- 可选，当需要一个ticket时，样式名称可用于自定义CAS UI。values可以使用Spring Expression Language语法
+* proxyPolicy -- 确定服务是否能够代理身份验证
+* evaluationOrder -- 确定注册服务的相对顺序。当两个服务URL表达式指向同一个服务时，该参数用于评估有限使用哪个，作为内部排序的一个因素
+* authenticationPolicy -- 认证政策，可以作为补充，也可以覆盖全局认证engine
+* attributeReleasePolicy -- 用于描述可发布给应用的属性的政策，过滤逻辑
+* logoutType -- 定义当logout协议开始时，如何对待服务
+** LogoutType.BACK_CHANNEL
+** LogoutType.FRONT_CHANNEL
+** LogoutType.NONE
+* responseType -- 定义CAS对这个服务如何响应
+* usernameAttributeProvider -- 确定哪个值作为“username”返回给应用
+* accessStrategy -- 用于定义服务访问规则的策略配置
+* publicKey -- 与服务相关的公钥，用于授权请求时，对回应信息进行加密
+* logoutUrl -- 服务用于接收logout请求的URL
+* properties -- 与服务相关的额外元数据，key/value对形式。可以用于向服务定义中注入自定义字段，以便扩展模块使用
+* multifactorPolicy -- 通常用于多步认证时，描述服务认证的政策
+* contacts -- 服务所有者相关的联系方式
+* matchingStrategy -- 指定认证请求匹配服务定义的策略
+
+*Service Type*
+
+以上属性可用于所有普通服务定义，用于特殊协议的额外服务类型属性可参考相应指南。
+
+==== 3.3.1. 服务访问策略
+
+==== 3.3.2. 代理认证政策
+
+==== 3.3.3. Required Authentication
+
+==== 3.3.4. Tags & Properties
+
+==== 3.3.5. Contacts & Owners
+
+==== 3.3.6. 过期政策
+
+==== 3.3.7. 匹配策略
+
+==== 3.3.8 存储
+
+CAS可用以下方式存储服务元数据信息：
+
+* Memory -- 将服务定义XML存储在内存中。如果修改，需要CAS重新打包、服务器重启
+* JSON -- 将服务定义存储在JSON文件中。HA高可用部署方式需要同步服务定义
+* YAML -- 将服务定义存储在YAML文件中。HA高可用部署方式需要同步服务定义
+* GIT -- 将服务定义存储在GIT仓库中。HA部署的候选方案
+* MongoDB -- 将服务定义存储在MongoDB中。HA部署的候选方案
+* Redis -- 将服务定义存储在Redis中。HA部署的候选方案
+* LDAP -- 将服务定义存储在目录服务器中。HA部署的候选方案
+* JPA 将服务定义存储在关系型数据库中。HA部署的候选方案
+* Couchbase -- 将服务定义存储在Couchbase中。HA部署的候选方案
+* CouchDB -- 将服务定义存储在CouchDB中。HA部署的候选方案
+* ...
+* REST -- 以REST API方式实现自己的服务注册。HA部署的候选方案
+* Custom -- 使用CAS APIs扩展实现自己的服务注册。HA部署的候选方案
+
+*Memory存储服务注册信息*
+
+以Spring Bean的方式注入到上下文环境，不适合使用服务管理webapp，因为它没有持久化数据。只适合硬编码配置，且无需UI管理的方式使用
+
+----
+@Configuration("myConfiguration")
+public class MyConfiguration {
+
+  @Bean
+  public List inMemoryRegisteredServices() {
+      final List services = new ArrayList<>();
+      final RegexRegisteredService service = new RegexRegisteredService();
+      ...
+      services.add(service);
+      return services;
+  }
+}
+----
+
+也可以在启动时通过默认JSON服务定义自动初始化，服务定义文件存储在：
+
+__classpath:src/main/resources/services__
+
+*JSON服务注册*
+
+开启依赖：
+
+----
+implementation "org.apereo.cas:cas-server-support-json-service-registry:${casServerVersion}
+----
+
+通过本地系统资源定位JSON服务定义，可以通过参指定JSON资源文件存储的路径
+
+----
+# cas.service-registry.json.location=classpath:/services
+----
+
+文件命名规则：
+
+__JSON fileName = serviceName + "-" + serviceNumericId + ".json"__
+
+*YAML服务注册*
+
+开启依赖：
+
+----
+implementation "org.apereo.cas:cas-server-support-yaml-service-registry:${casServerVersion}
+----
+
+通过本地系统资源定位YAML服务定义，可以通过参指定YAML资源文件存储的路径
+
+----
+# cas.service-registry.yaml.location=classpath:/services
+----
+
+文件命名规则：
+
+__YAML fileName = serviceName + "-" + serviceNumericId + ".yml"__
+
+*如何选择存储方案*
+
+选择标准如下：
+
+* 选择比较擅长的技术，有足够的技能解决问题、扩展
+* 选择的技术不应该强制将CAS配置绑定到集群中任何单个的服务器或节点上，因为这将自动扩展问题和人工的付出
+* 选择一种适合自己的网络或防火墙配置的技术
+* 选择一种能够达到性能和压力测试要求的技术
+* 选择一种尽量不依赖外部处理、系统和人工的技术
+
+== 00. cas文档转换
+
+使用国内镜像下载安装 gitbook
+
+----
+npm install --registry=https://registry.npm.taobao.org gitbook-cli -g
+----
+
+----
+cd docs/cas-server-documentation
+gitbook install
+gitbook serve
+----
+
