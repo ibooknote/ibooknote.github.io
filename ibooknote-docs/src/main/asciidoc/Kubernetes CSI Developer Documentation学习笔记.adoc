@@ -1,0 +1,213 @@
+= Kubernetes CSI Developer Documentation 学习笔记
+
+== 1. 介绍
+
+本文档介绍如何开发、部署、测试 Kubernetes上的 CSI 驱动。
+
+=== 1.1. 开发和部署
+
+==== 1.1.1. 为Kubernetes开发和部署 CSI 驱动的最小需求
+
+最小需求主要关注 Kubernetes 组件如何找到并与 CSI 驱动通信。
+
+* Kubelet 与 CSI 驱动通信
+** Kubelet 通过 Unix Domain Socket 直接发布 CSI调用给 CSI 驱动，用于挂载或取消挂载volumes。
+** Kubelet 通过 kubelet plugin registration 机制发现 CSI 驱动（并使用 Unix Domain Socket 与其通信）。
+** 因此，所有部署到Kubernetes的 CSI 驱动都必须通过kubelet plugin registration 机制将自己注册到每一个支持的节点上。
+* Master 与 CSI 驱动通信
+** Kubernetes master组件不直接与CSI 驱动通信。
+** Kubernetes master组件只与Kubernetes API交互。
+** 因此，CSI 驱动的操作要依赖Kubernetes API（如卷的创建、挂载、快照等），必须观察Kubernetes API，并触发合适的 CSI 操作。
+
+==== 1.1.2. 为Kubernetes开发和部署 CSI 驱动的推荐方法
+
+Kubernetes 开发团队建立了开发、部署、测试 CSI 驱动的推荐方法。主要是为了减少样本代码，简化CSI驱动开发者的开发过程。
+
+Recommended Mechanism：
+
+* Kubernetes CSI Sidecar Containers
+* Kubernetes CSI objects
+* CSI Driver Testing tools
+
+要使用以上方法实现一个 CSI 驱动，开发者应该完成以下任务：
+
+1. 创建一个容器化应用，实现 CSI规范 https://github.com/container-storage-interface/spec/blob/master/spec.md#rpc-interface （CSI 驱动容器）中描述的 Identity, Node，以及可选的 Controller 服务。
+** 参考 Developing CSI Driver https://kubernetes-csi.github.io/docs/developing.html
+2. 使用 csi-sanity 进行单元测试。
+** 参考 Driver - Unit Testing https://kubernetes-csi.github.io/docs/unit-testing.html
+3. 定义 Kubernetes API YAML 文件，用于与合适的 sidecar容器一起部署 CSI 驱动容器
+** 参考 Deploying in Kubernetes https://kubernetes-csi.github.io/docs/deploying.html
+4. 在 Kubernetes 集群上部署驱动，并运行端到端功能测试。
+** 参考 Driver - Functional Testing https://kubernetes-csi.github.io/docs/functional-testing.html
+
+==== 1.1.3. 引用连接
+
+* Design Doc https://github.com/kubernetes/community/blob/master/contributors/design-proposals/storage/container-storage-interface.md
+
+
+== 2. 为 Kubernetes 开发 CSI 驱动
+
+=== 2.0
+
+==== 2.0.1 Remain Informed
+
+开发者应该加入 https://groups.google.com/forum/#!forum/container-storage-interface-drivers-announce 以便了解可能影响 CSI驱动的修改。
+
+==== 2.0.2. 概述
+
+创建 CSI 驱动的第一步是编写一个应用，实现CSI specification 中描述的gRPC服务。
+
+最低限度， CSI 驱动必须实现以下 CSI服务：
+
+* CSI Identity 服务
+** 能让调用方（Kubernetes组件和CSI sidecar容器）识别驱动，以及支持哪些可选的功能。
+* CSI Node 服务
+** 只有 NodePublishVolume , NodeUnpublishVolume , and NodeGetCapabilities 是必须的
+** 必须的方法能让调用方在指定的路径（path）挂载一个 volume，并能发现驱动支持哪些可选功能。
+
+所有的 CSI 服务都可以在同一个 CSI 驱动应用中实现。CSI 驱动应用应该做到容器化，以方便在 Kubernetes 上部署。一旦容器化，CSI驱动就能与 CSI Sidecar 容器搭配部署到 node，或以控制器模式部署。
+
+==== 2.0.3. 功能 Capabilities
+
+CSI 驱动可以实现的其他功能：
+
+* CONTROLLER_SERVICE ( PluginCapability )
+** 整个 CSI 控制器服务都是可选的。这个功能表明驱动实现了 CSI控制器服务中的一个或多个方法。
+* VOLUME_ACCESSIBILITY_CONSTRAINTS ( PluginCapability )
+** 这个功能表明这个驱动的 volumes 在集群中所有节点上的可访问性并非都相同，驱动可以返回额外的拓扑结构信息，kubernetes可以用来更智能的调度工作负载
+* VolumeExpansion ( PluginCapability )
+** 这个功能表明驱动支持 volumes 在创建之后扩展大小。
+* CREATE_DELETE_VOLUME ( ControllerServiceCapability )
+** 这个功能表明驱动支持动态提供或删除 volume。
+* PUBLISH_UNPUBLISH_VOLUME ( ControllerServiceCapability )
+** 这个功能表明驱动实现了 ControllerPublishVolume 和
+ControllerUnpublishVolume -- 对应 Kubernetes volume attach/detach 操作。
+* CREATE_DELETE_SNAPSHOT ( ControllerServiceCapability )
+** 这个功能表明驱动支持提供 volume 快照，以及使用快照创建新的volume 的能力。
+* CLONE_VOLUME ( ControllerServiceCapability )
+** 这个功能表明驱动支持克隆 volumes。
+* STAGE_UNSTAGE_VOLUME ( NodeServiceCapability )
+** 这个功能表明驱动实现了 NodeStageVolume 和
+NodeUnstageVolume -- 对应 Kubernetes volume device mount/unmount 操作。例如，用于为每个node创建全局 volume 挂载。
+
+以上是部分列表，完整功能列表需参考 CSI spec。
+
+=== 2.1. 版本、支持，和 Kubernetes 兼容性
+
+==== 2.1.1. 版本
+
+==== 2.1.2. 支持
+
+==== 2.1.3. Kubernetes 兼容性
+
+* 最小版本
+* 最大版本
+* 推荐版本
+
+=== 2.2. Kubernetes 变更记录
+
+
+=== 2.3. Kubernetes 集群控制器
+
+Kubernets 集群控制器负责管理 快照对象和跨多个 CSI 驱动的操作，所以它们应该作为 Kubernetes 发行版的一部分来打包、部署（不依赖任何 CSI 驱动）。
+
+Kubernetes 开发团队维护以下 集群控制器
+
+* snapshot-controller
+
+==== 2.3.1. 快照控制器 snapshot-controller
+
+*状态和版本*
+
+Git Repository: https://github.com/kubernetes-csi/external-snapshotter
+
+*描述*
+
+快照控制器将在 Kubernetes API 服务器上监视 VolumeSnapshot 和VolumeSnapshotContent CRD对象。
+
+*部署*
+
+
+=== 3.5. 快照验证 Webhook
+
+
+=== 3.6. Kubernetes CSI Sidecar 容器
+
+Kubernetes CSI Sidecar 容器是一套标准的容器，用于简化 Kubernetes上的 CSI 驱动的开发和部署。
+
+这些容器包含一些通用逻辑，用于观察 Kubernetes API，触发伴随的CSI Volume 驱动容器上的合适的操作，并适时更新 Kubernetes API。
+
+这些容器期望和第三方 CSI 驱动容器捆绑，一起作为pods部署。
+
+这些容器由 Kubernetes 存储社区开发和维护。
+
+使用这些 sidecar 容器的好处：
+
+* 减少样板代码。
+** CSI 驱动开发者不需要担心复杂的 Kubernetes 特定代码。
+* 隔离关注点
+** 与 Kubernetes API交互的代码与实现 CSI接口的代码隔离。
+
+Kubernetes开发团队维护以下 Kubernetes CSI Sidecar 容器
+
+* external-provisioner
+* external-attacher
+* external-snapshotter
+* external-resizer
+* node-driver-registrar
+* cluster-driver-registrar (deprecated)
+* livenessprobe
+
+=== 3.7. Kubernetes 和 CSI Sidecar 兼容性问题
+
+sidecar的每个版本有一个最小、最大和推荐的 Kubernetes 版本预期兼容。
+
+尽量使用推荐版本。
+
+
+
+1. Introduction
+2. Developing a CSI Driver for Kubernetes
+2.1. Versioning, Support, Compatibility Policies
+2.2. Kubernetes Changelog
+2.3. Kubernetes Cluster Controllers
+2.3.1. Snapshot Controller
+2.3.2. Snapshot Validation Webhook
+2.4. Sidecar Containers
+2.4.1. external-attacher
+2.4.2. external-provisioner
+2.4.3. external-resizer
+2.4.4. external-snapshotter
+2.4.5. livenessprobe
+2.4.6. node-driver-registrar
+2.4.7. cluster-driver-registrar
+2.4.8. external-health-monitor-controller
+2.4.9. external-health-monitor-agent
+2.5. CSI objects
+2.5.1. CSIDriver Object
+2.5.2. CSINode Object
+2.6. Features
+2.6.1. Secrets & Credentials
+2.6.1.1. StorageClass Secrets
+2.6.1.2. VolumeSnapshotClass Secrets
+2.6.2. Topology
+2.6.3. Raw Block Volume
+2.6.4. Skip Attach
+2.6.5. Pod Info on Mount
+2.6.6. Volume expansion
+2.6.7. Data Sources
+2.6.7.1. Cloning
+2.6.7.2. Volume Snapshot & Restore
+2.6.8. Ephemeral Local Volumes
+2.6.9. Volume Limits
+2.6.10. Storage Capacity Tracking
+2.6.11. Volume Health Monitoring
+2.6.12. Token Requests
+2.6.13. FSGroup Support
+3. Deploying a CSI Driver on Kubernetes
+3.1. Example
+4. Driver Testing
+4.1. Unit Testing
+4.2. Functional Testing
+5. Drivers
+6. Troubleshooting

@@ -1,0 +1,69 @@
+= Patterns of Distributed Systems
+
+分布式系统对编程提出了特殊的挑战。通常要求我们对数据有多个拷贝，并且需要保持数据之间的同步。我们不能仅依靠处理节点的可靠性，网络延迟很容易就会导致不一致性。尽管如此，很多组织还是依靠很多核心的分布式软件来处理数据存储、消息、系统管理和计算能力。这些系统面对的常见问题都使用类似的方法来解决。这篇文章将这些方法提炼成模式，在此基础上我们能够好的理解、沟通和指导分布式系统设计。
+
+== 内容
+
+* 这是关于什么的
+** 分布式系统 -- 一个实现视角
+*** 模式
+* 问题和解决方案
+** 进程崩溃
+** 网络延迟
+** 进程挂起
+** 未同步的时钟和事件顺序
+* 把它们放在一起 -- 模式序列
+** 实现一致性的模式序列
+** Kubernetes或Kafka的控制板
+** 逻辑时间戳使用
+* 下一步
+
+== Patterns
+
+* Consistent Core
+* Fixed Partitions
+* Follower Reads
+* Generation Clock
+* Gossip Dissemination
+* HeartBeat  心跳
+* High-Water Mark 高水位线
+* Hybrid Clock
+* Idempotent Receiver
+* Key And Value †
+* Lamport Clock
+* Leader and Followers
+* Lease
+* Low-Water Mark 低水位线
+* Paxos
+* Quorum 法定人数
+* Replicated Log 复制日志
+* Request Batch 批量请求
+* Request Pipeline 请求管道
+* Segmented Log 日志分片
+* Single Socket Channel
+* Singular Update Queue
+* State Watch
+* Version Vector 版本向量
+* Versioned Value
+* Write-Ahead Log 预写日志
+* pattern in progress
+
+== 1. 这是关于什么的
+
+=== 1.1. ** 分布式系统 -- 一个实现视角
+==== 1.1.1. 模式
+
+*Patterns*
+
+Christopher Alexander 提出的一个概念，被软件社区广泛接受，用来记录构建软件系统的设计结构。*模式* 提供了一个看问题空间的结构化方法，伴随着多次出现并被验证的解决方案。使用模式的一个有趣方式是将几个模式联合到一起，组成一个 *模式序列* 或 *模式语言* ，为实现完整的系统提供指导。将分布式系统看作一系列模式，有利于探究它们的实现。
+
+== 2. 问题和解决方案
+=== 2.1. 进程崩溃
+=== 2.2. 网络延迟
+=== 2.3. 进程挂起
+=== 2.4. 未同步的时钟和事件顺序
+== 3. 把它们放在一起 -- 模式序列
+=== 3.1. 实现一致性的模式序列
+=== 3.2. Kubernetes或Kafka的控制板
+=== 3.3. 逻辑时间戳使用
+== 4. 下一步

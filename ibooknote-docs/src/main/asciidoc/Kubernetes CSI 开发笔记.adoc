@@ -1,0 +1,141 @@
+= Kubernetes CSI 容器存储开发
+
+== 1. 相关资源
+
+* 本地参考资料目录 manual/Kubernetes-CSI
+* https://kubernetes-csi.github.io/docs/ （Kubernetes CSI Developer Documentation.pdf）
+* https://github.com/kubernetes/community/blob/master/sig-storage/volume-plugin-faq.md
+* /Users/wanghongwei/SRepository/github-res/open-source/kubernetes/kubernetes-csi （kubernetes-csi.github.io本地仓库）
+
+== 2. Volumes|Kubernetes.pdf 学习笔记
+
+容器中使用存储在磁盘上的文件的两个问题：
+
+* 容器崩溃之后，文件会丢失
+* 在同一个Pod上同时运行多个容器时，文件共享问题
+
+Kubernetes 卷抽象解决了这些问题。
+
+=== 2.1. 背景
+
+Docker有个 volumes 的概念，但比较松散，缺乏管理。一个Docker volume 是磁盘上或其他容器中的一个路径。Docker提供了volume驱动，但功能有些受限。
+
+Kubernetes 支持多种类型的volumes。一个 Pod 可以同时使用多种类型的 volume。短暂的 volume 类型的生命周期和pod相同，但持久 volumes 在pod生命周期之后仍然存在。因此，比容器生命周期长的 volume 运行在 pod内，可以使得数据在容器重启过程中保留下来。当pod关闭并退出时，volume也会被销毁。
+
+实际上，volume 就是一个目录，可能在其中存储了一些数据，pod中的容器可以访问它。
+
+要使用 volume，必须在 Pod 中通过 .spec.volumes 来指定，并声明挂载到容器中的什么位置： .spec.containers[*].volumeMounts。容器中的进程能够看到的文件系统视图是由 Docker镜像和 volumes组成。Docker 镜像在文件系统根一级。Volumes 挂载到镜像中的特定路径。Volumes不能挂载到其他volumes上，或者硬连接到其他volumes。Pod配置的每个容器必须独立指定挂载的每一个volume。
+
+=== 2.2. Volume类型
+
+Kubernetes支持的集中volumes：
+
+* awsElasticBlockStore -- 将 EBS volume挂载到pod。可持久存储，数据可在多个pod间共享
+* azureDisk -- 将微软的 Azure 数据磁盘挂载到pod https://github.com/kubernetes/examples/tree/master/staging/volumes/azure_disk/README.md
+* azureFile -- 将微软的 Azure file volume挂载到pod https://github.com/kubernetes/examples/tree/master/staging/volumes/azure_file/README.md
+* cephfs -- 允许将一个已存在的CephFS volume 挂载到Pod。不想 emptyDir 在pod移除时会消失， cephfs volume的内容会保留下来，只是被取消挂载。这也就意味着 cephfs volume 可以预填充数据，并且数据可以在多个 pods间共享。cephfs volume 可以同时被多个写操作者挂载。（使用 cephfs volume的前提是必须有自己的 Ceph server。） https://github.com/kubernetes/examples/tree/master/volumes/cephfs/
+* cinder -- 用于挂载 OpenStack Cinder volume 到pod
+* configmap -- ConfigMap可以将配置数据注入pods。存储在ConfigMap中的数据可以在 configMap类型的volume中引用，并由运行在pod中的应用使用。
+* downwardAPI -- 挂载一个目录，将请求数据写入普通文本文件
+* emptyDir -- 当Pod分配给一个节点时创建，Pod在该节点上运行期一直存在。初始状态下是空的。Pod中的所有容器都可以读写 emptyDir volume中的相同文件，尽管volume可以在每个容器中挂载到相同或不同的路径。当Pod从节点上移除时，emptyDir中的数据也同时删除。（Pod中一个容器挂掉之后，并不会移除Pod，所以emptyDir volume中的数据是跨容器安全的。）
+* fc(fibre channel)
+* flocker(不推荐) -- 开源集群式容器数据卷管理
+* gcePersistentDisk -- Google计算引擎GCE持久磁盘
+* gitRepo（不推荐）-- 这个插件将一个空目录挂载，并克隆一个git仓库，供Pod使用
+* glusterfs -- 允许将Glusterfs volume挂载到Pod
+* hostPath -- 将节点主机的文件系统中的文件或目录挂载到Pod
+* iscsi -- 允许已存在的 iSCSI volume挂载到Pod
+* local -- 挂载本地存储设备，只能静态创建，不能动态提供
+* nfs -- 网络文件系统 NFS
+* quobyte -- Quobyte volume 支持CSI
+* rbd -- 允许 Rados Block Device（RBD） 挂载到Pod，要使用RBD必须先安装Ceph。RBD可同时被多个消费者挂载为只读卷；但只能被一个消费者挂载为读写卷，不允许多个消费者同时写入。
+* secret -- secret volume用于传递敏感信息给Pods，例如密码。secret volume由tmpfs支持，所以永远不会写入持久存储。（使用前，必须在Kubernetes API中创建Secret；容器如果使用 Secret 作为subpath 卷挂载，将不会收到Secret更新）
+* storageOS -- StorageOS作为一个容器来运行，为容器提供块存储。
+* vsphereVolume -- 挂载 vSphere VMDK 卷，支持 VMFS和VSAN两种数据存储。
+
+使用 emptyDir 的场景：
+
+* 临时空间，比如基于硬盘的合并排序
+* 从崩溃中恢复的长时间计算
+* 保持web服务器要提供的临时文件
+
+emptyDir volumes可以存储在任何类型的存储媒介中，如磁盘、SSD、网络存储，甚至可通过指定 emptyDir.medium 为Memory，存储在内存文件系统中。这种tmpfs性能很快，但需要注意 node 重启时，其中的数据会丢失，并且受到内存大小限制，可通过指定 SizeMemoryBackedVolumes 参数来控制内存大小，如果不指定，会分配Linux主机的50%内存。
+
+hostPath的使用场景：
+
+* 容器需要访问Docker内部
+* 在容器中运行cAdvisor
+* 允许Pod指示是否在Pod运行之前需要某个hostPath存在，是否应该被创建
+
+=== 2.3. 使用 subPath
+
+在一个Pod中的多个应用中共享同一个volume，可以使用 volumeMounts.subPath 属性指定一个 sub-path。
+
+使用 subPathExpr 字段从 downward API环境变了获取 subPath名称。
+
+=== 2.4. 资源
+
+使用 emptyDir 卷的存储媒介，无法限制或隔离每个容器或pod使用多少空间。
+
+使用方法可参考： https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+
+=== 2.5. Out-of-tree volume 插件
+
+out-of-tree volume插件包括 CSI和FlexVolume。这些插件允许存储提供商创建自定义的存储插件，无需将插件源代码添加到 Kubernetes 仓库。
+
+上面提到的所有volume 插件都是“in-tree”类型的。这些插件都是和kubernetes 核心代码一起构建、连接、编译。这就意味着添加新的存储系统，需要将代码提交到Kubernetes源代码仓库。
+
+实现自定义k8s存储卷的三种方式
+
+* In-tree 存储卷插件（不推荐使用，in-tree模式已经关闭）
+* Out-of-tree FlexVolume 驱动 （不推荐，新版k8s已不再改进）
+* Out-of-tree CSI 驱动 （推荐的标准方式）
+
+==== 2.5.1. csi
+
+Container Storage Interface（CSI）为容器编排系统定义了一套标准接口，用于将任意的存储系统暴露给它们的容器。
+
+Note：CSI驱动可能不是对所有的Kubernetes版本都兼容，需检查CSI驱动文档确定支持的Kubenerte版本。
+
+一旦兼容的CSI 卷驱动部署到Kubernetes集群，用户就可以使用 csi 卷来挂载由 CSI 驱动暴露的存储卷。
+
+csi volume在Pod中的三种使用方式：
+
+* 通过指向 PersistentVolumeClaim 的引用来使用
+* 与通用短暂卷（generic ephemeral volume）一起使用（alpha功能）
+* 与CSI短暂卷（CSI ephemeral volume）一起使用（需要驱动支持）
+
+存储管理员配置CSI持久卷时可使用的字段：
+
+* driver -- 指定要使用的卷驱动的名称字符串，这个值必须与CSI驱动中实现的GetPluginInfoResponse的返回值对应。Kubernetes用来标识调用哪一个CSI驱动，CSI驱动组件用于标识哪一个PV对象属于CSI驱动。
+* volumeHandle -- 卷的唯一标识字符串。值必须与 CSI驱动 CreateVolumeResponse 的 volume.id 字段返回值对应。对CSI卷驱动的所有调用中都可通过volume_id获得。
+* readOnly -- boolean类型，用于表示 卷是否时只读的，默认时false。CSI驱动的ControllerPublishVolumeRequest 中 readonly携带了该值。
+* fsType -- 如果 PV的 VolumeMode 时 Filesystem，那么这个字段可以用来指定用于挂载volume的文件系统。如果volume还没有被格式化，而且支持格式化，这个值可以用来格式化 volume。这个值可以从CSI驱动的ControllerPublishVolumeRequest, NodeStageVolumeRequest, and NodePublishVolumeRequest 中的 VolumeCapability 字段获得。
+* volumeAttributes -- 用于指定 volume 静态属性的 map(string,string)。这个map必须对应CSI驱动的 CreateVolumeResponse 中 volume.attributes 字段。可通过 ControllerPublishVolumeRequest, NodeStageVolumeRequest, and NodePublishVolumeRequest 中的 volume_context 传递。
+* controllerPublishSecretRef -- 调用ControllerPublishVolume and ControllerUnpublishVolume 时传递的包含敏感信息的 secret 对象的引用。如果没有敏感信息，这个参数是可选的。如果有多个secret，都会传递。
+* nodeStageSecretRef -- 调用NodeStageVolume时，传递的包含敏感信息的 secret 对象的引用。可选，如果有多个secret，都会传递。
+* nodePublishSecretRef -- 调用 NodePublishVolume 时，传递的包含敏感信息的 secret 对象的引用。可选，如果有多个secret，都会传递。
+
+=== 2.6. Mount 传播
+
+Mount 传播允许将一个容器挂载的 volumes 共享给同一个pod中其他容器使用，甚至可以共享给同一个node上的其他pods使用。
+
+卷的 Mount传播由 Container.volumeMounts 的 mountPropagation 字段控制。它的值可以是：
+
+* Note -- 这个 volume mount 将不接收主机随后安装到该卷或其任何子目录的任何后续挂载。同样，由这个容器创建的mounts在主机上是不可见的。（默认模式）
+* HostToContainer -- 这个 volume mount 将接收主机随后安装到该卷或其任何子目录的所有后续挂载。也就是说，如果主机在 volume mount 内挂载任何东西，对容器都是可见的。同样的，任何设置了 Bidirectional mount propagation 的 Pod 指向同一个 volume mounts ，带有 HostToContainer mount propagation 的容器都能看到。（与 linux 内核中的 rslave 相同）
+* Bidirectional 与HostToContainer的行为相同，另外所有被容器创建的 volume mounts 会传回主机，以及所有使用同一个volume的容器和pod。（与 linux 内核中的 rshared 相同）
+
+
+⚠️ Bidirectional 可能很危险。它能破坏操作系统主机，所以应该仅允许在有特权的容器中使用。必须熟悉Linux内核运行情况。另外，任何由容器创建的挂载卷都都必须在终端销毁或取消挂载。
+
+=== 2.7. 配置
+
+编辑 Docker 的 systemed 服务文件。设置 MountFlags=slave
+
+重启Docker进程：
+
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+

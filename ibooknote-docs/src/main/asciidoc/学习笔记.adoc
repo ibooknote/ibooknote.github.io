@@ -127,7 +127,7 @@ Actors的确定：
 
 Clojure采用其内置的软件事务内存，将JVM堆内存转换成事务数据集合。像一个常用的数据库，数据通过乐观事务语义修改。当有冲突发生时，事务会自动重试。这种无锁方式的优点是可以排除显式同步时的很多问题。使用起来也比较容易。
 
-但这种方法在有很多并发写操作的高并行化系统中效率较差。这种情况想，重试增加了消耗，性能也就变得不可预期。
+但这种方法在有很多并发写操作的高并行化系统中效率较差。这种情况下，重试增加了消耗，性能也就变得不可预期。
 
 *Java 8 lambdas*
 
@@ -366,171 +366,7 @@ bundle exec jekyll serve --host=192.168.142.137 --incremental
 
 指定host为暴露的IP地址。
 
-== 13. Java中异常处理问题
 
-* 所有异常都是Throwable的子类
-  ** Error子类的异常是程序无法预知、无法处理的异常发生时产生，如内存耗尽
-  ** 程序员可报告的异常都是 Exception 的子类
-    *** 未检查（Unchecked）异常都是 RuntimeException 的子类
-    *** 所有其他异常都是 checked 异常
-
-checked异常必须在程序中捕获或者在方法头部声明，编译器在编译时会检查这些异常是否做了相应的处理。
-
-The golden rule of exceptions is, “Throw early, catch late.”
-
-如果捕获到异常又不知道如何处理，只是想记录日志，可以捕捉之后再重新抛出。
-
-=== 13.1. 《Spring 5 design patterns》
-
-----
-RuntimeException, that is, it is an unchecked exception. In an enterprise application, unchecked exceptions can be thrown up the call hierarchy to the best place to handle it. The good thing is that the methods in between don't know about it in the application.
-----
-
-----
-Roll back if the business method throws a RuntimeException--it is the default behavior of a Spring transaction, but you can override it for checked and custom exceptions also
-----
-
-=== 13.2. 《Thinking in Java Fourth Edition》
-
-Standard Java exceptions
-
-----
-There’s a whole group of exception types that are in this category. They’re always thrown automatically by Java and you don’t need to include them in your exception specifications. Conveniently enough, they’re all grouped together by putting them under a single base class called RuntimeException, which is a perfect example of inheritance: It establishes a family of types that have some characteristics and behaviors in common. Also, you never need to write an exception specification saying that a method might throw a RuntimeException (or any type inherited from RuntimeException), because they are unchecked exceptions. Because they indicate bugs, you don’t usually catch a RuntimeException—it’s dealt with automatically. If you were forced to check for RuntimeExceptions, your code could get too messy. Even though you don’t typically catch RuntimeExceptions, in your own packages you might choose to throw some of the RuntimeExceptions.
-----
-
-----
-Keep in mind that only exceptions of type RuntimeException (and subclasses) can be ignored in your coding, since the compiler carefully enforces the handling of all checked exceptions. The reasoning is that a RuntimeException represents a programming error, which is:
-
-1. An error you cannot anticipate. For example,a null reference that is out side of your control.
-2. An error that you, as a programmer, should have checked for in your code (such as ArraylndexOutOfBoundsException where you should have paid attention to the size of the array). An exception that happens from point #1 often becomes an issue for point #2.
-
-----
-
-=== 13.3. 《Core Java SE 9》
-
-5 Exceptions, Assertions and Logging
-
-5.1.3
-
-=== 13.4. 《Effective Java 3rd Edition》
-
-Effective Java中文版（原书第3版）
-
-10. Exceptions
-
-*item 69:只在异常条件下使用异常*
-
-不要使用异常代替边界判断，去控制数组的遍历。正常的循环终止测试,性能要比异常的创建、捕捉好很多，并且很多JVM会对其进行优化。
-
-__异常正如他们的名字所描述的，仅仅用于异常条件下；永远不要用于正常的流程控制。__
-
-这条原则也适用于API设计：一个设计良好的API一定不能强制它的客户端使用异常来处理正常流程控制（例如Iterator必须提供hasNext()用于终止迭代判断）
-
-除了hasNext()这种单独的状态测试方法以外，另一种做法是：状态相关的方法被调用时，如果该对象处于不适当的状态中，则返回一个可被识别的值，比如null。但这中方式对于Iterator的应用场景并不合适，因为null是next方法的合法返回值。
-
-“状态测试方法”和“可被识别的返回值”两种方式在使用上的选择原则：
-
-* 如果一个对象在缺少外部同步控制的情况下被并发访问，或者可被外部改变状态，那么使用一个可被识别的返回值可能更有必要，因为在调用“状态测试”方法和调用对应的状态相关方法的时间间隔之间，对象状态可能会发生变化。
-* 如果一个单独的“状态测试”方法必须要重复“状态相关”方法的工作，那么从性能角度考虑，应该使用可被识别的返回值。
-* 如果不存在上述两点问题，那么“状态测试”方法略优于可被识别的返回值，因为它提供了更好的可读性。
-
-
-*item 70: checked异常用于可恢复条件，run-time异常用于程序错误*
-
-Java语言提供的三类异常：
-
-* checked exceptions
-* runtime exceptions
-* errors
-
-决定是使用已检查异常还是未检查异常的一条重要原则：
-
-* 当调用方能够合理的恢复时，使用 checked 异常 -- 通过抛出 checked 异常，可以强迫调用方捕获并处理异常，或者将其传递给上层调用方。方法声明抛出的每一个 checked 异常可以有效的指示 API 使用者，相关状况是执行方法的一种可能输出。
-
-有两种未检查的throwables：runtime异常和错误。它们在行为上是一致的：都是可抛出的，不需要也不应该被捕获。如果一个程序抛出一个未检查异常或者错误，通常表明这种状况是不可恢复的，并且继续执行下去有害无益。如果一个程序不捕获这种异常，它将导致当前线程挂起，并带有合适的错误信息。
-
-使用run-time异常表示程序错误 -- _precondition violations_。
-
-precondition violations -- 是指API客户端没有遵守API规范发布的约定。例如数组越界异常。
-
-如果相信一个条件下允许恢复，使用已检查异常；否则，使用运行时异常。如果不太明确使用哪种，那就尽量选择未检查异常。（原因参见 item 71）
-
-普遍接受的约定： 最好不要实现 Error 的子类；所有未检查 throwables 都应该直接或间接的实现为 RuntimeException 的子类。不但不应该定义 Error的子类，AssertionErro的异常也不应该被抛出。
-
-永远不要自己定义Exception、RuntimeException或者Error以外的其他异常。Java语言规范会把它们当作普通的 checked 异常。
-
-因为 checked 异常通常指示了可恢复条件，对于这样的异常，提供一些辅助方法非常重要，可以帮助调用者在异常条件下获取用于恢复的额外信息。例如，当购买礼品卡时，因余额不足而抛出的 checked 异常。这种异常应该提供一个方法可以查询缺少的金额。这样，调用方可以将金额信息返回给购买者。
-
-总结：
-
-* 可恢复条件下，抛出 checked 异常；
-* 程序错误抛出 unchecked 异常；
-* 当有所怀疑时抛出 unchecked 异常；
-* 不要定义除了 checked 异常和 runtime 异常以外的其他异常；
-* 为 checked 异常提供recovery时用于获取信息的方法。
-
-
-*Item 71: 避免不必要的情况下使用已检查异常*
-
-如果一个方法抛出一个或多个已检查异常，那么调用方必须在一个或多个catch中处理这些异常，或者声明抛出这些异常，向上传递，这会加重程序员的负担。
-
-在Java 8中，当方法抛出 checked 异常时，它不能直接用于 streams 中。
-
-_如果正确使用API无法阻止出现异常情况，并且程序员使用API时如果遭遇异常可以采取一些有用的措施，那么这种负担是合理的。除非这两个条件都成立，否则，未检查异常更合适。_
-
-如果使用API的程序员不能更好的处理，那么未检查异常更合适。
-
-总结：
-
-* 谨慎的使用 checked 异常，可以增加程序的可靠性；
-* 当过度使用 checked 异常时，会让API的使用变的很痛苦；
-* 如果调用方不能从失败中恢复，那么抛出 unchecked 异常；
-* 如果恢复可能可行，并且希望强制调用方处理异常情况，可以优先考虑返回一个 optional
-* 仅当在失败情况下提供的信息不足时，才应该抛出已检查异常（？？？）
-
-*Item 72: 尽量使用标准异常*
-
-重用标准异常的几点好处：
-
-* API 更容易学习和使用（标准异常大家都熟悉）
-* 使用这种API的程序可读性更好
-* 更少的异常类，意味着更小的内存空间需求和类加载时间
-
-常用的异常：
-
-* IllegalArgumentException 传入参数不合法
-* IllegalStateException 要调用的对象状态不合法，如未初始化
-* NullPointerException
-* IndexOutOfBoundsException
-* ConcurrentModificationException
-* UnsupportedOperationException
-
-不要直接使用 Exception, RuntimeException, Throwable, Error。把这些类当作抽象类对待。因为它们是其他异常类的超类，所以当方法抛出时，不能更可靠的测试这些异常（可能不是你预期的地方抛出的，而是其他位置抛出的异常子类，而被你给当成超类对象捕捉到了）
-
-*Item 73: 抛出适合于抽象的异常*
-
-exception translation -- _上层应该捕获底层的异常，在它们的位置再抛出可以用上层抽象解释的异常。_
-
-exception chaining -- 当底层异常有助于调试问题时，底层异常当作cause传递给上层异常，上层异常提供getCause方法可以重新获取底层异常。
-
-尽管异常转换比无意识的从底层传递异常更好，但也不要过度使用。
-
-
-*Throw early, catch late*
-----
-TIP: Some programmers think it is shameful to admit that a method might throw an exception. Wouldn’t it be better to handle it instead? Actually, the opposite is true. You should allow each exception to find its way to a competent handler. The golden rule of exceptions is, “Throw early, catch late.”
-----
-
-=== 13.5. Core Java Volume I -- Fundamentals
-
-Chapter 7 Exception
-
-7.3 异常使用提示
-
-1. 不能使用异常处理来代替正常的单个测试 -- if (!s.empty()) s.pop();
-2. 不要将每条语句可能产生的异常单独管理（每条语句用一个try 、catch）
-3. 合理利用合适的异常级别 -- 不要直接抛出 RuntimeException，而是选择一个合适的子类或创建自己的
-4. 不要压制（隐藏）异常
 
 == 14. Swagger框架
 
@@ -618,19 +454,6 @@ open regression frameworks：
 
 《Unit Test Frameworks》
 
-== 17. Kubernetes CSI 容器存储开发
-
-相关资源：
-
-* https://kubernetes-csi.github.io/docs/ （Kubernetes CSI Developer Documentation.pdf）
-* https://github.com/kubernetes/community/blob/master/sig-storage/volume-plugin-faq.md
-* /Users/wanghongwei/SRepository/github-res/open-source/kubernetes/kubernetes-csi （kubernetes-csi.github.io本地仓库）
-
-实现自定义k8s存储卷的三种方式：
-
-* In-tree 存储卷插件（不推荐使用，in-tree模式已经关闭）
-* Out-of-tree FlexVolume 驱动 （不推荐，新版k8s已不再改进）
-* Out-of-tree CSI 驱动 （推荐的标准方式）
 
 
 == 18. Gson 和 springfox 冲突问题的解决
@@ -693,3 +516,469 @@ CKAD -- Certified Kubernetes Application Developer
 
 CKA -- Kubernetes管理员认证
 
+== 22. Entity、Value Object、DTO 
+
+概念、来源、应用场景和方法
+
+=== 22.1.《微服务架构模式》中 Entity、Value object的定义：
+
+* Entity —- 带有一个持久化唯一标识的对象。两个实体即使有相同的属性值，也是不同的对象。在Java EE应用中，类使用 JPA 注解 @Entity 的类通常是 DDD 实体。
+* Value object —- 是一个值的集合的对象。两个值对象的属性值相同，可以互换使用。值对象的一个例子就是 Money 类，它由货币和金额组成。
+
+=== 22.2.《Patterns of Enterprise Application Architecture》
+
+Chapter 15: Distribution Patterns
+
+* Remote Facade
+* Data Transfer Object
+
+==== Remote Facade
+
+Granularity -- 粒度 是应用 Remote Facade 时最难的一个问题。
+
+最大的错误是在 Remote Facade 中放置了领域逻辑。Remote Facade 中不应该有领域逻辑（domain logic）
+
+任何一个facade 都应该是 thin skin ，只有最小的职责。
+
+service层没必要使用 Data Transfer Objects（DTO），它可以直接返回领域对象给客户端。
+
+什么时候使用 Remote Facade ？
+
+需要远程访问一个细粒度对象模型时，就应该使用 Remote Facade。最常见的应用场景时展现层和Domain Model之间。
+
+如果只是在单个进程内访问，则不需要使用Remote Facade。
+
+==== Data Transfer Object
+
+An object that carries data between processes in order to reduce the number of method calls.
+
+在处理过程中传递数据的对象，目的是为了减少方法调用。
+
+How It Works
+
+数据传输对象 通常是令人生厌的。它仅仅是一堆带有getter和setter方法的字段。允许在一次网络调用过程中移动一组信息，这是分布式系统中必不可少的技巧。
+
+*如何使用 DTO*
+
+* 序列化时最好使用文本形式（Json/XML），二进制形式的序列化在反序列化时，如果增加或删除字段，容易导致失败；
+* 直接使用数组作为DTO的缺点：数组索引会使代码难以理解
+* 最好的集合是使用字典（map），这样可以使用有意义的字符串作为keys。但字典又有一个问题就是没有明确的接口和抢类型。当没有现成的DTO生成器时，可以临时使用字典；
+* 当使用生成器时，最好使用一个接口，特别是当要考虑将其用在不同的组件之间当作通信协议使用时。
+
+*从领域对象装配DTO*
+
+DTO不知道如何与领域对象沟通，因为它要部署在连接的两端。所以，DTO不应该依赖领域对象。领域对象也不应该DTO，因为当修改接口格式时，DTO的结构也会发生变化。所以应该保持领域模型不依赖于外部接口。
+
+这就需要创建一个分离的assembler（装配器）对象，负责从领域模型创建DTO，以及从DTO更新模型。装配器是 Mapper 的一个例子，在DTO和领域对象间进行映射。
+
+多个装配器可以共享同一个DTO。不同场景下不同的修改含义，使用相同的数据。
+
+分离装配器的另一个原因是 DTO 可以很容易通过简单的数据描述自动生成。而自动生成装配器就比较困难。
+
+*何时使用DTO*
+
+当在两个过程中的一个方法调用需要传输多个数据条目时，就需要使用DTO。
+
+有几种替代DTO的方案（虽然不怎么好）：
+
+* 不使用对象，而使用带有多个参数的set方法或者可以传递多个引用参数的get方法。问题是像Java这种语言只允许返回一个对象，所以这种方法即使可以用于更新，但在不使用回调方法时，无法用于取回信息
+* 另一种替代方案是使用类似string形式的展现方式，不使用接口。问题是所有的代码都会和这个string representation耦合到一起。而使用显示接口可以隐藏背后的细微展现形式，如果想改变字符串或者替换成二进制结构，不需要修改任何东西。
+
+当想在两个组件之间使用XML通信时，特别值得创建DTO。XML DOM操作起来很麻烦，使用DTO对其进行封装，并且DTO很容易生成。
+
+另一个常见的目的是将DTO作为一个通用数据源，用于不同层的组件。每个组件对DTO做一些修改，然后将其传递给下一层。
+
+==== Value Object
+
+A small simple object, like money or a date range, whose equality isn't based on identity.
+
+小的简单对象，例如 money 或者 date 范围，判断是否相等时不依赖唯一标识。
+
+由于有各种个样的对象系统，所以有必要区分以下引用对象和值对象。值对象通常比较小，类似很多非纯面向对象语言中的基本类型。
+
+值对象如何工作？
+
+引用对象和值对象的关键区别在于如何处理相等问题：
+
+* 引用对象使用唯一标识作为判断是否相等的基础 -- 可能是编程系统中的唯一标识，例如OO编程语言中的内置唯一标识，或者是某一类ID数字，例如关系型数据库中的主键。
+* 值对象基于类中的字段值来判断是否相等。因此，如果两个日期对象，如果它们中的年月日的值均相同，那么两个日期相同。
+
+最好将值对象做成不可变的，一旦创建，任何字段不再修改。这样可以避免 aliasing bugs。当两个对象共享同一个值对象时，可能会出现别名bug（其中一个所有者修改了它的值）。
+
+*何时使用值对象*
+
+当不使用唯一标识判断相等时，可以使用值对象。任何容易创建的小的对象都值得考虑使用值对象。
+
+名字碰撞：有些J2EE社区将值对象等同于DTO，这个需要注意。
+
+== 23. 设计模式、架构模式的相关阅读资源
+
+* 《微服务架构模式》 -- 适合微服务架构的各种模式
+* 《Patterns of Enterprise Application Architecture》 -- 适合企业应用开发的各种模式，提到了值对象、DTO、实体等。
+* 《DDD 领域驱动设计》 -- 领域模型
+* 《实现领域驱动设计》
+* 《设计模式》
+* 《Head First Design Patterns》
+
+《领域驱动设计》中提到了值对象（Value Object）、实体（Entity）、DTO，与《Patterns of Enterprise Application Architecture》结合阅读，Martin Fowler的这本书中解释的更详细、清楚。
+
+== 24. Angular JS
+
+=== 24.1. 本地环境和工作空间设置
+
+基础依赖：
+
+* Node.js
+* npm 包管理器
+
+*安装 Angular CLI*
+
+----
+npm install -g @angular/cli
+----
+
+*创建工作空间并初始化应用*
+
+----
+ng new my-app
+----
+
+*运行应用*
+
+----
+cd my-app/
+ng serve --open
+----
+
+默认地址： http://localhost:4200/
+
+== 25. Git for Teams
+
+=== Chapter 3. 分支策略
+
+==== Conventions
+
+*主干分支开发*
+
+最简单的分支策略就是主干分支方法。这种策略下，只使用很少的分支。开发者持续将工作提交到单一的中心分支 -- 它必须始终是准备发布状态。也就是说，主干分支应该只包含测试通过的代码，而且应该永远不会被破坏。
+
+directed acyclic graph 有向无环图
+
+使用鼓励定期集成的分支策略的一些好处：
+
+* 整个项目过程中不会有太多分支。减少冲突
+* 提交到代码库中的commit相对较小。如果出现问题，可以快速回退。
+* 更少的紧急修复，因为保存进主干分支的任何代码都是可部署的。
+
+缺点：
+
+* 前提是假设主干分支包含的必须是可部署代码。如果团队没有一个测试基础设施，那么假设代码不会出错的风险很大，特别是当项目变得越来越复杂时。
+* 部署的概念更适合可自动加载到用户设备上的网站类应用。不太适合需要重新下载、安装的应用。
+* 
+
+*按功能分支部署*
+
+为了克服单个分支策略的局限，可以额外引出两种类型的分支：
+
+* 功能分支
+* 集成分支
+
+技术上来说，它们并非不同的分支，只是提交的工作内容的类型不同。
+
+在按功能分支部署的策略下，所有新工作都在一个功能分支完成，它应该尽量小到恰好包含一个完整的idea。
+
+*GitHub Flow*
+
+GitHub 项目分支使用流程：
+
+* master分支中的任何代码都是可部署的
+* 当开发新功能时，从master创建一个有描述性名称的分支（ie：new-oauth2-scopes）
+* commit到本地分支，并经常性的将开发工作推送到服务器上的相同分支
+* 当需要反馈或帮助时，或者认为这个分支已经准备好合并，打开一个pull request
+* 当代码经过审查或某个人对这个功能签字确认后，可已将其合并到master
+* 一旦它被merged并推到master，你可以并且应该立即部署
+
+== 26. shell
+
+=== 26.1. shell中条件判断的两种方式
+
+* [] -- which is available in many different versions of the Bourne shell.
+* [[]] --  The second version is identical to the first except that word splitting and pathname expansion are not performed on the words within the brackets.
+
+* [ condition ] -- 括号前后的空格是必须的
+
+ref: Learning the bash shell, 3rd Edition
+
+==== 26.1.1. 字符串比较
+
+* str1 = str2  匹配
+* str1 != str2 不匹配
+* str1 < str2  小于
+* str1 > str2  大于
+* -n str1      str1 非空，长度大于0
+* -z str1      str1 为空，长度为0
+
+==== 26.1.2. 文件属性检查
+
+* -a file  -- 文件存在返回true
+* -d file  -- 文件存在并且是路径返回true
+* -e file  -- 文件存在；与 -a 相同
+* -f file  -- 文件存在，并且是普通文件，不是路径或其他特殊文件
+* -r file  -- 有读取文件的权限
+* -s file  -- 文件存在并且非空
+* -w file  -- 有写文件的权限
+* -x file  -- 有执行文件权限，或者路径有搜索权限
+* -N file  -- 文件在最后一次读取之后已被修改
+* -O file  -- 你自己的文件
+* -G file  -- 文件所属group ID与你的匹配
+* file1 -nt file2  -- file1 比 file2 新
+* file1 -ot file2  -- file1 比 file2 旧
+
+==== 26.1.3. brace expansion 与区间遍历
+
+借助 brace expansion 功能针对区间 [begin, end]进行遍历
+
+先将中括号[1, 5]转换成大括号格式：{1..5}，再利用eval对其进行遍历：
+
+----
+src_str="[1,5]"
+src_str=`echo $src_str | sed 's/\[//' | sed 's/\]//' | sed 's/, */../'`
+dest="echo {$src_str}"
+for num in $(eval $dest); do
+  echo "num=$num"
+done
+----
+
+==== 26.1.4. bash脚本中函数返回值
+
+bash中不能使用return作为返回值的命令，只能通过echo输出要返回的内容，然后由调用方捕捉输出的内容：
+
+----
+fun1() {
+  echo "fun1_return"
+}
+
+res=$(fun1)
+echo "res=$res"
+----
+
+== 27. UML
+
+《UML for Java Programmers》
+
+=== 27.1 概述
+
+UML -- Unified Modeling Language
+
+用于绘制软件概念的示意图。
+
+三个应用场景：
+
+* 一个问题领域的的示意图，对应级别 Conceptual 概念的
+* 目标软件设计，对应级别 Specification 规格说明
+* 已完成软件的实现，对应级别 Implementation 实现
+
+Specification 和 Implementation 级别的示意图与源代码有很强的相关性。Specification要转换成源代码，而Implementation用于描述已存在的源代码。必须遵循严格的语义规则。
+
+Conceptual 级别的示意图与源代码没有太强的联系，它们与人类语言更接近。用于描述人类问题领域的抽象概念。不需要遵循严格的语义规则。
+
+== 28. Cloud Native Go
+
+Chapter 11 Observability
+
+Logging
+Logging is the process of appending records of noteworthy events to an immuta‐ ble record—the log—for later review or analysis. A log can take a variety of forms, from a continuously appended file on disk to a full-text search engine like Elasticsearch. Logs provides valuable, context-rich insight into application- specific events emitted by processes. *However, it’s important that log entries are properly structured; not doing so can sharply limit their utility.
+We’ll dive into logging in more detail in “Logging” on page 387*.
+
+*Logging*
+
+log -- an immutable record of events.
+
+Better Looging Practices
+
+* maximizing the quality, and minimizing the quantity.
+* shouldn't log sensitive business data or personally identifiable information
+* logs should be treated as a stream of events, and should be written, unbufferer, directly to stout and stderr.
+* structure events for parsing
+
+*structured log elements*
+
+* time -- a timestamp
+* level -- level of importance for the log event, INFO, WARN, ERRO
+* One or more contextual elements -- method, error, message, duration...
+
+the structured log form is easier, faster, and cheaper to extract meaning from, nad the results are far easier to search, filter, and aggregate.
+
+*Tip*
+
+Don't use line breaks in your log events if you can help it.
+
+== 29. Cloud Native
+
+=== 29.6. Best Practices
+
+*Logging*
+
+* Use a Unified Logging System
+* Use Correlation IDs -- unique CID through all services, pinpoint where the failure occured.
+* Include context with Log Entries -- all execption handling, retry attempts, service name or ID, image version, binary version..
+* Common and Structured Logging Format -- all components use a common and structured logging format. Use same time zone.
+
+== 30. spring-boot-reference Logging
+
+== 4.4. Logging
+
+Spring Boot 内部使用 Commons Logging，但底层的log实现是开放的，并提供了以下默认配置实现：
+
+* Java Util Logging
+* Log4J2
+* Logback
+
+如果使用Starters，则自动使用 Logback。项目中可直接使用 SLF4J。
+
+=== 4.4.1. 日志格式
+
+Spring Boot 默认日志输出格式：
+
+----
+2019-03-05 10:57:51.112  INFO 45469 --- [           main]
+  org.apache.catalina.core.StandardEngine  : Starting Servlet Engine: Apache
+  Tomcat/7.0.52
+----
+
+包括以下条目：
+
+* 日期和时间 -- 精确到毫秒，方便按时间排序
+* 日志级别 -- ERROR, WARN, INFO, DEBUG, TRACE
+* 进程ID
+* --- 分隔符，用于区分真正日志信息的开始
+* 线程名 -- 方括号括起来的字符串，控制台输出时可能被截断
+* 日志输出者名称 -- 通常是输出日志的类名（包名部分通常是缩写）
+* 日志消息 -- 程序中输出的具体日志描述信息
+
+*Tip*
+
+Logback中没有FATAL级别，其映射到了ERROR。
+
+=== 4.4.2. 控制台输出
+
+默认的日志配置是将消息输出到控制台。默认情况下，ERROR，WARN，INFO三个级别的消息会被记录日志。也可以通过在命令行指定 --debug 参数来指示应用输出debug日志。
+
+> java -jar myapp.jar --debug
+
+可以指定 --trace 参数来开启trace模式，也可以在properties中设置trace=true
+
+*Color-coded Output*
+
+使用 spring.output.ansi.enabled 配置开启控制台日志带颜色的格式化输出
+
+> spring.output.ansi.enabled=ALWAYS
+
+=== 4.4.3. 文件输出
+
+Spring Boot日志默认输出到控制台，如果需要输出到日志，需要设置 logging.file.name 或者 logging.file.path属性。
+
+如果指定的是路径，那么直接写到spring.log文件中，大小达到10MB时会轮换新文件。可以设置文件大小、历史文件的保留天数、文件总大小等参数，也可以设置在应用启动时清除历史文件。
+
+=== 4.4.4. 日志级别
+
+logging.level.<logger-name>=<level>可设置的级别包括：
+
+* TRACE, DEBUG, INFO, WARN, ERROR, FATAL, or OFF. 
+
+----
+  logging.level.root=warn
+  logging.level.org.springframework.web=debug
+  logging.level.org.hibernate=error
+----
+
+=== 4.4.5. 日志分组
+
+----
+ logging.group.tomcat=org.apache.catalina, org.apache.coyote, org.apache.tomcat
+ logging.level.tomcat=TRACE
+----
+
+=== 4.4.6. 自定义日志配置
+
+== 31. The Go Programming Language
+
+Go语言特殊的点：
+
+1. 声明变量时有多种写法
+
+* var a int -- 只声明为int类型，默认值为0
+* var a = 10 -- 通过右侧值类型确定 a的类型为int
+* a := 10 -- 声明加赋值，简写形式
+* 同时声明或赋值多个变量 -- a, b := 1, 2 这种写法a和b必须有一个是新声明的变量，否则需要直接使用 a, b = 1, 2
+
+2. 方法内的变量只对方法内可见，方法外的变量如果开头字母小写只对当前包可见，如果大写对其他包也可见
+
+3. 也有指针概念，但和c语言中的指针的区别是没有指针算数运算
+
+4. go语言中没有空指针概念，所有变量都是有默认值的，整型为 0， 布尔型为 false，字符串型为空字符串，接口或指针类型的默认值为 nil
+
+5. go语言中函数可以返回内部局部变量的地址（指针类型）
+
+6. 指针类型也可以比较，只有两个指针指向同一个变量地址时才相等
+
+=== 2.6 包和文件
+
+包能够隐藏信息，用于控制哪些名字对包以外是可见的，一个简单的规则就是对包以外可见的标识符首字母大写。
+
+2.6.2 Package Initialization 没太看懂
+
+=== 2.7. Scope
+
+* 声明的可见范围是编译期属性
+* 生命周期（lifetime）是执行期变量可被其他部分引用，是运行时属性
+
+*lexical blocks*
+
+*universe block*
+
+Go中的正常做法一般是在 if 块处理错误并返回，而成功执行路径不缩进。
+
+=== 3. Basic Data Types
+
+Go中的四种类型：
+
+* basic types -- 数值、字符串、boolean
+* aggregate types -- 数组、结构体
+* reference types -- 指针、slices、maps、函数、channels
+* interface types
+
+
+== 32. Programming Rust
+
+Rust语言语法的特点：
+
+* while或if条件部分代码两边不需要小括号
+* let 声明局部变量时可以不明确指定类型，而由所赋的值来自动推断出来
+* 如果函数体结尾最后一行以表达式结束，并且没有分号，表示表达式的值为函数的返回值，不用加return（挺奇葩）；只有在程序中间位置要返回时才需要显式使用return
+
+命令行打开浏览器浏览Rust标准库帮助页面：
+
+ rustup doc --std
+
+Rust语言的库引入借鉴了C++语言中的use namespace 命名空间的方式。
+
+所有Rust函数都是线程安全的
+
+*Concurrency 一节没看懂* （Chapter 2. A Toour of Rust）
+
+[dependencies] 中的 crates 版本号如果只写一位（如：1），表示Cargo将使用2.0以前的最新版本。
+
+如果程序在1.2版本测试通过，那么通常在1.3， 1.4版本下都应该能够正常工作；但2.0可能会引入不兼容的变化。
+
+当执行程序报 Blocking waiting for file lock on package cache 并挂起时的解决办法：
+
+rm ~/.cargo/.package-cache
+
+删除该缓存文件。
+
+如果
+
+__rustup component add xxx --toolchain stable-x86_64-apple-darwin__
+
+这种命令无法执行，开启代理后，执行 . ~/.profile，加载http_proxy/https_proxy

@@ -152,3 +152,14 @@ SOA和微服务的架构风格类似，都是将系统设计成一个服务集�
 
 *服务部署模式*
 
+==== 5.1.3. 关于领域驱动设计
+
+子领域（Subdomains）、边界上下文（Bounded Context）是两个战略DDD模式。
+
+DDD还有一些战术模式，用于为领域模型构建块。开发者广泛采用的战术模式包括：
+
+* Entity —- An object that has a persistent identity. Two entities whose attributes have the same values are still different objects. In a Java EE application, classes that are persisted using JPA @Entity are usually DDD entities.
+* Value object —- An object that is a collection of values. Two value objects whose attributes have the same values can be used interchangeably. An example of a value object is a Money class, which consists of a currency and an amount.
+* Factory -- 实现了对象创建逻辑的对象或方法，用于解决直接使用构造方法比较麻烦的情况。也可以隐藏要实例化的具体类
+* Repository -- 提供持久化实体和数据库访问机制的对象
+* Service -- 实现了业务逻辑的对象，不属于实例，也不属于值对象

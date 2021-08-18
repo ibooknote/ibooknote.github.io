@@ -1,0 +1,25 @@
+= Write-Ahead log 预写日志
+
+通过将每一个状态变化作为一条命令，追加到日志（append only log），不需要将存储数据结构刷新到硬盘即可提供持久的保证。
+
+== 问题
+
+即使在服务器存储数据失败的时候也需要强持久化保证。一个服务器一旦同意执行一个操作，那么即使在它失败后重启，丢失了所有内存中的状态，它也应该能够完成。
+
+== 解决方案
+
+将每一个状态改变作为一条命令，存储到硬盘中的一个文件里。每个服务进程维护一个日志，只能顺序追加。顺序追加的单一日志简化了重启之后对日志的后续在线操作。每一个日志条目被赋予一个唯一标识。唯一日志标识有助于 *日志分片* 或在达到 *Low-Water Mark* 时清除日志。日志更新可以用 *Singular Update Queue* 实现。
+
+日志条目的典型结构如下：
+
+----
+class WALEntry…
+  private final Long entryId;
+  private final byte[] data;
+  private final EntryType entryType;
+  private long timeStamp;
+----
+
+== 实现的考虑
+
+== 例子

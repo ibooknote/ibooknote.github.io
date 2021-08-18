@@ -1,0 +1,11 @@
+= Kubernetes笔记
+
+== 1. Sidecar Containers
+
+Sidecar容器用于加强pod中主容器的操作。可以将sidecar添加到一个pod中，以便可以使用已有的容器镜像来代替往应用代码中增加额外的逻辑，降低复杂度、提高可复用性。
+（Kubernetes in Action - Introducing Sidecar Containers）
+
+《Kubernetes Patterns》-- Chapter 15 Sidecar
+Sidecar容器在不改变已有容器的前提下扩展和改善其功能。
+Sidecar是一种容器模式，允许多个单一目标的容器紧密合作。
+
